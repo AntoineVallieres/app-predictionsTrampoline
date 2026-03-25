@@ -11,7 +11,7 @@ TEXTS = {
         'NAVI_LABEL': "Navigation",
         'NAVI_PREDICT': "Faire une prédiction",
         'NAVI_VIEW_PREDICTS': "Voir les prédictions",
-        'NAVI_COACH': "Zone Admin", # <-- MODIFIÉ ICI
+        'NAVI_COACH': "Zone Admin",
         'WELCOME_MSG_TITLE': "👋 Bienvenue !",
         'WELCOME_MSG_COACH_ACTION': "Veuillez aller dans la 'Zone Admin' pour créer votre premier événement.",
         'CHOOSE_EVENT_LABEL': "Choisir l'épreuve :",
@@ -26,7 +26,7 @@ TEXTS = {
         'ERR_PREDICT_INCOMPLETE': "Tu dois assigner une position à TOUS les athlètes.",
         'ERR_PREDICT_DUPLICATE_RANK': "Tu as donné la même position à plus d'un athlète.",
         'SUCCESS_PREDICT_RECORDED': "✅ Tes prédictions sont enregistrées, {0}!",
-        'MULTISELECT_8_LABEL': "Sélectionne tes 8 finalistes (Cliquez dans la boîte) :",
+        'MULTISELECT_8_LABEL': "Sélectionne tes 8 finalistes en cochant les noms :",
         'ERR_NOT_8_SELECTED': "Tu dois sélectionner EXACTEMENT 8 athlètes.",
 
         # Section 2 : Voir
@@ -36,7 +36,7 @@ TEXTS = {
         'TABLE_PREDICTS_COL_RANK': "Rang / Choix",
         'INFO_NO_PREDICTS': "Aucune prédiction pour le moment.",
 
-        # Section 3 : Coach - Login
+        # Section 3 : Admin - Login
         'SUB_COACH_TITLE': "🔒 Zone d'administration",
         'COACH_LOGIN_TEXT': "Cette zone est réservée à l'administrateur.",
         'INPUT_PWD_LABEL': "Mot de passe :",
@@ -44,7 +44,7 @@ TEXTS = {
         'ERR_WRONG_PWD': "Mot de passe incorrect.",
         'BTN_LOGOUT': "Se déconnecter (Verrouiller)",
 
-        # Section 3 : Coach - Actions
+        # Section 3 : Admin - Actions
         'COACH_ACTION_LABEL': "Action :",
         'ACTION_CREATE_EVENT': "Créer une nouvelle épreuve",
         'ACTION_RENAME_EVENT': "Renommer l'épreuve",
@@ -113,7 +113,7 @@ TEXTS = {
         'NAVI_LABEL': "Navigation",
         'NAVI_PREDICT': "Make a prediction",
         'NAVI_VIEW_PREDICTS': "View predictions",
-        'NAVI_COACH': "Admin Zone", # <-- CHANGED HERE
+        'NAVI_COACH': "Admin Zone",
         'WELCOME_MSG_TITLE': "👋 Welcome!",
         'WELCOME_MSG_COACH_ACTION': "Please go to the 'Admin Zone' to create your first event.",
         'CHOOSE_EVENT_LABEL': "Choose the event:",
@@ -127,7 +127,7 @@ TEXTS = {
         'ERR_PREDICT_INCOMPLETE': "You must assign a position to ALL athletes.",
         'ERR_PREDICT_DUPLICATE_RANK': "You have given the same position to more than one athlete.",
         'SUCCESS_PREDICT_RECORDED': "✅ Your predictions are recorded, {0}!",
-        'MULTISELECT_8_LABEL': "Select your 8 finalists (Click in the box):",
+        'MULTISELECT_8_LABEL': "Select your 8 finalists by checking the names:",
         'ERR_NOT_8_SELECTED': "You must select EXACTLY 8 athletes.",
 
         'SUB_VIEW_TITLE': "📊 Prediction Leaderboard",
@@ -220,7 +220,7 @@ def charger_donnees():
     if os.path.exists(FICHIER_DONNEES):
         with open(FICHIER_DONNEES, "r", encoding="utf-8") as f:
             donnees = json.load(f)
-            # Patch de rétrocompatibilité pour les anciennes sauvegardes
+            # Patch de rétrocompatibilité
             for ev_nom, ev_data in donnees.items():
                 if "statut" not in ev_data: ev_data["statut"] = "actif"
                 if "vrais_resultats" not in ev_data: ev_data["vrais_resultats"] = None
@@ -282,21 +282,34 @@ if evenement_actif and choix == t['NAVI_PREDICT']:
                 sauvegarder_donnees()
                 st.success(t['SUCCESS_PREDICT_RECORDED'].format(nom_athlete))
 
-    # LOGIQUE DEMI-FINALE : Choisir 8 noms parmi la liste
+    # LOGIQUE DEMI-FINALE : Grille de sélection visuelle (cases à cocher)
     elif ev_type == "demi-finale":
         st.write(f"**{t['MULTISELECT_8_LABEL']}**")
-        choix_utilisateur = st.multiselect("", options=finalistes_actuels, max_selections=8, label_visibility="collapsed")
+        
+        # On crée une grille de 3 colonnes pour afficher les 24 noms
+        colonnes_demi = st.columns(3)
+        choix_utilisateur = []
+        
+        for i, athlete in enumerate(finalistes_actuels):
+            with colonnes_demi[i % 3]:
+                # Si la case est cochée, on ajoute l'athlète à la liste
+                if st.checkbox(athlete, key=f"check_{athlete}"):
+                    choix_utilisateur.append(athlete)
+                    
+        # Compteur visuel en direct pour aider l'utilisateur
+        couleur_compteur = "green" if len(choix_utilisateur) == 8 else "red"
+        label_compteur = "Sélectionnés" if selected_lang == 'Français' else "Selected"
+        st.markdown(f"**{label_compteur} : <span style='color:{couleur_compteur}'>{len(choix_utilisateur)} / 8</span>**", unsafe_allow_html=True)
+        st.write("") # Petit espace
         
         if st.button(t['BTN_CONFIRM_PREDICT'], type="primary"):
             if not nom_athlete: st.error(t['ERR_NO_NAME'])
             elif len(choix_utilisateur) != 8: st.error(t['ERR_NOT_8_SELECTED'])
             else:
-                # On sauvegarde sous forme de dictionnaire pour garder la même structure (Choix 1, Choix 2, etc.)
                 dict_choix = {athlete: (i+1) for i, athlete in enumerate(choix_utilisateur)}
                 st.session_state.evenements[evenement_actif]["predictions"][nom_athlete] = dict_choix
                 sauvegarder_donnees()
                 st.success(t['SUCCESS_PREDICT_RECORDED'].format(nom_athlete))
-
 
 # =========================================================
 # SECTION 2 : VOIR LES PRÉDICTIONS
@@ -312,7 +325,7 @@ elif evenement_actif and choix == t['NAVI_VIEW_PREDICTS']:
         for nom, preds in predictions_actuelles.items():
             if ev_type == "finale":
                 affichage_predictions[nom] = {rang: athlete for athlete, rang in preds.items()}
-            else: # Demi-finale (On affiche juste la liste des 8 choix, l'ordre n'importe pas)
+            else:
                 affichage_predictions[nom] = {f"Choix {i+1}": athlete for i, athlete in enumerate(preds.keys())}
             
         df = pd.DataFrame(affichage_predictions)
@@ -326,7 +339,6 @@ elif evenement_actif and choix == t['NAVI_VIEW_PREDICTS']:
             if ev_type == "finale":
                 colonne_resultats = [vrais_resultats_propres.get(i) for i in df.index]
             else:
-                # En demi-finale, la vraie colonne affiche simplement les 8 finalistes qualifiés
                 colonne_resultats = list(vrais_resultats_propres.values())
                 
             col_true_name = t['TABLE_PREDICTS_COL_TRUE_RESULT']
@@ -345,7 +357,6 @@ elif evenement_actif and choix == t['NAVI_VIEW_PREDICTS']:
                         elif int(rang_predit) <= 3 and rang_vrai and rang_vrai <= 3: styles.append('background-color: rgba(255, 235, 59, 0.4); color: black;')
                         else: styles.append('background-color: rgba(244, 67, 54, 0.4); color: black;')
                     elif ev_type == "demi-finale":
-                        # En demi-finale, vert si l'athlète a fait la finale, rouge sinon.
                         if athlete in vrais_athletes: styles.append('background-color: rgba(76, 175, 80, 0.4); color: black;')
                         else: styles.append('background-color: rgba(244, 67, 54, 0.4); color: black;')
                 return styles
@@ -391,7 +402,6 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
             st.subheader(t['SUB_CREATE_EVENT'])
             nouvel_evenement = st.text_input(t['INPUT_NEW_EVENT_NAME'])
             
-            # NOUVEAUTÉ : Choisir le type
             type_ev_label = st.radio(t['EVENT_TYPE_LABEL'], [t['TYPE_FINALE'], t['TYPE_DEMI']])
             type_ev_code = "finale" if type_ev_label == t['TYPE_FINALE'] else "demi-finale"
             
@@ -419,19 +429,16 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
                     st.rerun()
                 elif nouveau_nom_ev in st.session_state.evenements and nouveau_nom_ev != evenement_actif: st.error(t['ERR_EVENT_EXISTS'])
 
-        # --- C. MODIFIER LA LISTE DE DÉPART (TEXT AREA MAGIQUE) ---
+        # --- C. MODIFIER LA LISTE DE DÉPART ---
         elif evenement_actif and action_coach == "EDIT_FIN":
             st.subheader(f"{t['SUB_EDIT_FIN']} : {evenement_actif}")
             ev_type = st.session_state.evenements[evenement_actif].get("type", "finale")
             finalistes_actuels = st.session_state.evenements[evenement_actif]["finalistes"]
             
-            # On affiche les noms existants sous forme de texte (un par ligne)
             texte_noms_defaut = "\n".join(finalistes_actuels)
-            
             noms_entres = st.text_area(t['INPUT_ATHLETES_AREA'], value=texte_noms_defaut, height=300)
             
             if st.button(t['BTN_SAVE_FIN_NAMES']):
-                # On nettoie la liste (enlève les espaces vides et les lignes vides)
                 nouveaux_noms = [nom.strip() for nom in noms_entres.split('\n') if nom.strip()]
                 
                 if len(set(nouveaux_noms)) != len(nouveaux_noms):
@@ -481,12 +488,14 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
                     sauvegarder_donnees()
                     st.success(t['SUCCESS_RESULTS_SAVED'])
             
-            # Si les résultats sont déjà entrés, on affiche le tableau des points
             if st.session_state.evenements[evenement_actif].get("vrais_resultats"):
                 vrais_res = st.session_state.evenements[evenement_actif]["vrais_resultats"]
-                vrais_resultats_athlete = {athlete: int(rang) for rang, athlete in vrais_res.items()}
-                vrai_top_3 = {vrais_res["1"], vrais_res["2"], vrais_res["3"]}
-                vrai_premier = vrais_res["1"]
+                
+                vrais_res_propres = {int(k): v for k, v in vrais_res.items()}
+                vrais_resultats_athlete = {athlete: int(rang) for rang, athlete in vrais_res_propres.items()}
+                
+                vrai_top_3 = {vrais_res_propres.get(i) for i in [1, 2, 3] if vrais_res_propres.get(i)}
+                vrai_premier = vrais_res_propres.get(1)
                 
                 scores = {}
                 predictions_actuelles = st.session_state.evenements[evenement_actif]["predictions"]
@@ -501,7 +510,6 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
                         if preds.get(vrai_premier) == 1: score += 1
                     
                     elif ev_type == "demi-finale":
-                        # Pour la demi-finale : 1 point par athlète correctement identifié dans le top 8
                         for athl in preds.keys():
                             if athl in vrais_resultats_athlete: score += 1
                             
@@ -513,7 +521,6 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
                 df_scores.index += 1
                 st.dataframe(df_scores, use_container_width=True)
 
-                # NOUVEAUTÉ : Le bouton pour lier Demi-Finale vers Finale
                 if ev_type == "demi-finale":
                     st.write("---")
                     nom_nouvelle_finale = f"{evenement_actif} - FINALE"
@@ -521,7 +528,7 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
                         if nom_nouvelle_finale not in st.session_state.evenements:
                             st.session_state.evenements[nom_nouvelle_finale] = {
                                 "type": "finale",
-                                "finalistes": list(vrais_res.values()), # On prend les 8 vrais gagnants
+                                "finalistes": list(vrais_res_propres.values()),
                                 "predictions": {}, "vrais_resultats": None, "statut": "actif"
                             }
                             sauvegarder_donnees()
