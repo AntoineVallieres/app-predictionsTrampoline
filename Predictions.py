@@ -26,8 +26,8 @@ TEXTS = {
         'ERR_PREDICT_INCOMPLETE': "Tu dois assigner une position à TOUS les athlètes.",
         'ERR_PREDICT_DUPLICATE_RANK': "Tu as donné la même position à plus d'un athlète.",
         'SUCCESS_PREDICT_RECORDED': "✅ Tes prédictions sont enregistrées, {0}!",
-        'MULTISELECT_8_LABEL': "Sélectionne tes 8 finalistes en cochant les noms :",
-        'ERR_NOT_8_SELECTED': "Tu dois sélectionner EXACTEMENT 8 athlètes.",
+        'MULTISELECT_QUALIF_LABEL': "Sélectionne tes {0} qualifiés en cochant les noms :",
+        'ERR_NOT_N_SELECTED': "Tu dois sélectionner EXACTEMENT {0} athlètes.",
 
         # Section 2 : Voir
         'SUB_VIEW_TITLE': "📊 Tableau des prédictions",
@@ -57,9 +57,10 @@ TEXTS = {
         'INPUT_NEW_EVENT_NAME': "Nom de l'épreuve",
         'EVENT_TYPE_LABEL': "Type d'épreuve :",
         'TYPE_FINALE': "Finale (Classer de 1 à 8)",
-        'TYPE_DEMI': "Demi-finale (Trouver les 8 finalistes parmi 16/24)",
+        'TYPE_QUALIF': "Ronde de qualification (Trouver les qualifiés)",
+        'INPUT_NB_QUALIFIES': "Nombre d'athlètes qui passent à la ronde suivante :",
         'BTN_CREATE_EVENT': "Créer l'épreuve",
-        'SUCCESS_EVENT_CREATED': "L'épreuve a été créée ! Rends-toi dans 'Modifier la liste de départ' pour ajuster les noms.",
+        'SUCCESS_EVENT_CREATED': "L'épreuve a été créée ! Rends-toi dans 'Modifier la liste de départ'.",
         'ERR_EVENT_EXISTS': "Une épreuve porte déjà ce nom.",
 
         'SUB_RENAME_EVENT': "✏️ Renommer l'épreuve",
@@ -72,7 +73,7 @@ TEXTS = {
         'BTN_SAVE_FIN_NAMES': "Sauvegarder la liste",
         'ERR_FIN_NAMES_DUPLICATE': "Assure-toi que tous les noms sont différents.",
         'ERR_NOT_EXACTLY_8': "Pour une finale, tu dois inscrire EXACTEMENT 8 athlètes.",
-        'ERR_NOT_ENOUGH_DEMI': "Pour une demi-finale, tu dois inscrire plus de 8 athlètes.",
+        'ERR_NOT_ENOUGH_QUALIF': "Pour cette ronde, tu dois inscrire plus de {0} athlètes au total.",
         'SUCCESS_FIN_NAMES_UPDATED': "La liste a été mise à jour !",
 
         'SUB_EDIT_PART': "👤 Corriger le nom d'un participant",
@@ -86,14 +87,14 @@ TEXTS = {
         'SUB_ENTER_RESULTS': "🏆 Résultats officiels pour l'épreuve",
         'INPUT_TRUE_POS': "Vraie position {0}",
         'BTN_CALC_RESULTS': "CALCULER ET APPLIQUER LES COULEURS",
-        'ERR_INCOMPLETE_RESULTS': "Remplis les 8 positions avec des athlètes différents.",
+        'ERR_INCOMPLETE_RESULTS': "Remplis les {0} positions avec des athlètes différents.",
         'SUCCESS_RESULTS_SAVED': "Résultats sauvegardés !",
         
         'CALC_LEADERBOARD_TITLE': "Classement final des experts",
         'CALC_COL_PART': "Participant",
         'CALC_COL_POINTS': "Points Total",
-        'BTN_CREATE_FINAL_FROM_DEMI': "🔗 Créer la FINALE avec ces 8 athlètes",
-        'SUCCESS_LINKED_FINAL': "La finale a été créée avec succès !",
+        'BTN_CREATE_NEXT_ROUND': "🔗 Créer la RONDE SUIVANTE avec ces {0} athlètes",
+        'SUCCESS_LINKED_FINAL': "La ronde suivante a été créée avec succès !",
 
         'SUB_MANAGE_ARCHIVES': "🗑️ Nettoyage des événements",
         'INFO_NO_EVENTS_TO_MANAGE': "Aucun événement à gérer.",
@@ -127,8 +128,8 @@ TEXTS = {
         'ERR_PREDICT_INCOMPLETE': "You must assign a position to ALL athletes.",
         'ERR_PREDICT_DUPLICATE_RANK': "You have given the same position to more than one athlete.",
         'SUCCESS_PREDICT_RECORDED': "✅ Your predictions are recorded, {0}!",
-        'MULTISELECT_8_LABEL': "Select your 8 finalists by checking the names:",
-        'ERR_NOT_8_SELECTED': "You must select EXACTLY 8 athletes.",
+        'MULTISELECT_QUALIF_LABEL': "Select your {0} qualifiers by checking the names:",
+        'ERR_NOT_N_SELECTED': "You must select EXACTLY {0} athletes.",
 
         'SUB_VIEW_TITLE': "📊 Prediction Leaderboard",
         'INFO_RESULTS_ENTERED': "Official results are in! Compare choices with the first column.",
@@ -155,9 +156,10 @@ TEXTS = {
         'INPUT_NEW_EVENT_NAME': "Event name",
         'EVENT_TYPE_LABEL': "Event Type:",
         'TYPE_FINALE': "Final (Rank 1 to 8)",
-        'TYPE_DEMI': "Semi-final (Find the 8 finalists from 16/24)",
+        'TYPE_QUALIF': "Qualification round (Find the qualifiers)",
+        'INPUT_NB_QUALIFIES': "Number of athletes advancing to the next round:",
         'BTN_CREATE_EVENT': "Create event",
-        'SUCCESS_EVENT_CREATED': "Event created! Go to 'Edit start list' to adjust names.",
+        'SUCCESS_EVENT_CREATED': "Event created! Go to 'Edit start list'.",
         'ERR_EVENT_EXISTS': "An event already has this name.",
 
         'SUB_RENAME_EVENT': "✏️ Rename event",
@@ -170,7 +172,7 @@ TEXTS = {
         'BTN_SAVE_FIN_NAMES': "Save list",
         'ERR_FIN_NAMES_DUPLICATE': "Ensure all names are different.",
         'ERR_NOT_EXACTLY_8': "For a final, you must enter EXACTLY 8 athletes.",
-        'ERR_NOT_ENOUGH_DEMI': "For a semi-final, you must enter more than 8 athletes.",
+        'ERR_NOT_ENOUGH_QUALIF': "For this round, you must enter more than {0} athletes in total.",
         'SUCCESS_FIN_NAMES_UPDATED': "List has been updated!",
 
         'SUB_EDIT_PART': "👤 Correct participant name",
@@ -184,14 +186,14 @@ TEXTS = {
         'SUB_ENTER_RESULTS': "🏆 Official results for",
         'INPUT_TRUE_POS': "True position {0}",
         'BTN_CALC_RESULTS': "CALCULATE AND APPLY COLORS",
-        'ERR_INCOMPLETE_RESULTS': "Fill all 8 positions.",
+        'ERR_INCOMPLETE_RESULTS': "Fill all {0} positions with different athletes.",
         'SUCCESS_RESULTS_SAVED': "Results saved!",
 
         'CALC_LEADERBOARD_TITLE': "Final Leaderboard",
         'CALC_COL_PART': "Participant",
         'CALC_COL_POINTS': "Total Points",
-        'BTN_CREATE_FINAL_FROM_DEMI': "🔗 Create FINAL with these 8 athletes",
-        'SUCCESS_LINKED_FINAL': "Final event successfully created!",
+        'BTN_CREATE_NEXT_ROUND': "🔗 Create NEXT ROUND with these {0} athletes",
+        'SUCCESS_LINKED_FINAL': "Next round successfully created!",
 
         'SUB_MANAGE_ARCHIVES': "🗑️ Event Management",
         'INFO_NO_EVENTS_TO_MANAGE': "No events to manage.",
@@ -225,6 +227,8 @@ def charger_donnees():
                 if "statut" not in ev_data: ev_data["statut"] = "actif"
                 if "vrais_resultats" not in ev_data: ev_data["vrais_resultats"] = None
                 if "type" not in ev_data: ev_data["type"] = "finale"
+                if ev_data["type"] == "demi-finale": ev_data["type"] = "qualif" # Mise à jour de l'ancien code
+                if "nb_qualifies" not in ev_data: ev_data["nb_qualifies"] = 8
             return donnees
     return {}
 
@@ -282,29 +286,27 @@ if evenement_actif and choix == t['NAVI_PREDICT']:
                 sauvegarder_donnees()
                 st.success(t['SUCCESS_PREDICT_RECORDED'].format(nom_athlete))
 
-    # LOGIQUE DEMI-FINALE : Grille de sélection visuelle (cases à cocher)
-    elif ev_type == "demi-finale":
-        st.write(f"**{t['MULTISELECT_8_LABEL']}**")
+    # LOGIQUE QUALIFICATION : Grille de sélection visuelle (cases à cocher)
+    elif ev_type == "qualif":
+        nb_q = st.session_state.evenements[evenement_actif].get("nb_qualifies", 8)
+        st.write(f"**{t['MULTISELECT_QUALIF_LABEL'].format(nb_q)}**")
         
-        # On crée une grille de 3 colonnes pour afficher les 24 noms
         colonnes_demi = st.columns(3)
         choix_utilisateur = []
         
         for i, athlete in enumerate(finalistes_actuels):
             with colonnes_demi[i % 3]:
-                # Si la case est cochée, on ajoute l'athlète à la liste
                 if st.checkbox(athlete, key=f"check_{athlete}"):
                     choix_utilisateur.append(athlete)
                     
-        # Compteur visuel en direct pour aider l'utilisateur
-        couleur_compteur = "green" if len(choix_utilisateur) == 8 else "red"
+        couleur_compteur = "green" if len(choix_utilisateur) == nb_q else "red"
         label_compteur = "Sélectionnés" if selected_lang == 'Français' else "Selected"
-        st.markdown(f"**{label_compteur} : <span style='color:{couleur_compteur}'>{len(choix_utilisateur)} / 8</span>**", unsafe_allow_html=True)
-        st.write("") # Petit espace
+        st.markdown(f"**{label_compteur} : <span style='color:{couleur_compteur}'>{len(choix_utilisateur)} / {nb_q}</span>**", unsafe_allow_html=True)
+        st.write("") 
         
         if st.button(t['BTN_CONFIRM_PREDICT'], type="primary"):
             if not nom_athlete: st.error(t['ERR_NO_NAME'])
-            elif len(choix_utilisateur) != 8: st.error(t['ERR_NOT_8_SELECTED'])
+            elif len(choix_utilisateur) != nb_q: st.error(t['ERR_NOT_N_SELECTED'].format(nb_q))
             else:
                 dict_choix = {athlete: (i+1) for i, athlete in enumerate(choix_utilisateur)}
                 st.session_state.evenements[evenement_actif]["predictions"][nom_athlete] = dict_choix
@@ -356,7 +358,7 @@ elif evenement_actif and choix == t['NAVI_VIEW_PREDICTS']:
                         if rang_vrai == int(rang_predit): styles.append('background-color: rgba(76, 175, 80, 0.4); color: black;')
                         elif int(rang_predit) <= 3 and rang_vrai and rang_vrai <= 3: styles.append('background-color: rgba(255, 235, 59, 0.4); color: black;')
                         else: styles.append('background-color: rgba(244, 67, 54, 0.4); color: black;')
-                    elif ev_type == "demi-finale":
+                    elif ev_type == "qualif":
                         if athlete in vrais_athletes: styles.append('background-color: rgba(76, 175, 80, 0.4); color: black;')
                         else: styles.append('background-color: rgba(244, 67, 54, 0.4); color: black;')
                 return styles
@@ -402,14 +404,19 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
             st.subheader(t['SUB_CREATE_EVENT'])
             nouvel_evenement = st.text_input(t['INPUT_NEW_EVENT_NAME'])
             
-            type_ev_label = st.radio(t['EVENT_TYPE_LABEL'], [t['TYPE_FINALE'], t['TYPE_DEMI']])
-            type_ev_code = "finale" if type_ev_label == t['TYPE_FINALE'] else "demi-finale"
+            type_ev_label = st.radio(t['EVENT_TYPE_LABEL'], [t['TYPE_FINALE'], t['TYPE_QUALIF']])
+            type_ev_code = "finale" if type_ev_label == t['TYPE_FINALE'] else "qualif"
+            
+            nb_qualifies = 8
+            if type_ev_code == "qualif":
+                nb_qualifies = st.selectbox(t['INPUT_NB_QUALIFIES'], [8, 16, 24])
             
             if st.button(t['BTN_CREATE_EVENT']):
                 if nouvel_evenement and nouvel_evenement not in st.session_state.evenements:
                     st.session_state.evenements[nouvel_evenement] = {
                         "type": type_ev_code,
-                        "finalistes": ["Athlète 1", "Athlète 2", "Athlète 3", "Athlète 4", "Athlète 5", "Athlète 6", "Athlète 7", "Athlète 8"],
+                        "nb_qualifies": nb_qualifies if type_ev_code == "qualif" else 8,
+                        "finalistes": ["Athlète 1", "Athlète 2", "Athlète 3", "Athlète 4", "Athlète 5", "Athlète 6", "Athlète 7", "Athlète 8"] if type_ev_code == "finale" else [f"Athlète {i+1}" for i in range(nb_qualifies + 4)],
                         "predictions": {}, "vrais_resultats": None, "statut": "actif"
                     }
                     sauvegarder_donnees()
@@ -433,6 +440,7 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
         elif evenement_actif and action_coach == "EDIT_FIN":
             st.subheader(f"{t['SUB_EDIT_FIN']} : {evenement_actif}")
             ev_type = st.session_state.evenements[evenement_actif].get("type", "finale")
+            nb_q = st.session_state.evenements[evenement_actif].get("nb_qualifies", 8)
             finalistes_actuels = st.session_state.evenements[evenement_actif]["finalistes"]
             
             texte_noms_defaut = "\n".join(finalistes_actuels)
@@ -445,8 +453,8 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
                     st.error(t['ERR_FIN_NAMES_DUPLICATE'])
                 elif ev_type == "finale" and len(nouveaux_noms) != 8:
                     st.error(t['ERR_NOT_EXACTLY_8'])
-                elif ev_type == "demi-finale" and len(nouveaux_noms) < 8:
-                    st.error(t['ERR_NOT_ENOUGH_DEMI'])
+                elif ev_type == "qualif" and len(nouveaux_noms) <= nb_q:
+                    st.error(t['ERR_NOT_ENOUGH_QUALIF'].format(nb_q))
                 else:
                     st.session_state.evenements[evenement_actif]["finalistes"] = nouveaux_noms
                     sauvegarder_donnees()
@@ -472,17 +480,20 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
         elif evenement_actif and action_coach == "ENTER_RESULTS":
             st.subheader(f"{t['SUB_ENTER_RESULTS']} : {evenement_actif}")
             ev_type = st.session_state.evenements[evenement_actif].get("type", "finale")
+            nb_q = st.session_state.evenements[evenement_actif].get("nb_qualifies", 8)
             vrais_resultats_rang = {}
             colonnes_vrai = st.columns(2)
             finalistes_actuels = st.session_state.evenements[evenement_actif]["finalistes"]
             
-            for i in range(1, 9):
+            limite_resultats = 8 if ev_type == "finale" else nb_q
+            
+            for i in range(1, limite_resultats + 1):
                 with colonnes_vrai[(i - 1) % 2]:
                     gagnant = st.selectbox(t['INPUT_TRUE_POS'].format(i), options=[None] + finalistes_actuels, key=f"vrai_{i}")
                     if gagnant: vrais_resultats_rang[i] = gagnant
 
             if st.button(t['BTN_CALC_RESULTS'], type="primary"):
-                if len(set(vrais_resultats_rang.values())) != 8: st.error(t['ERR_INCOMPLETE_RESULTS'])
+                if len(set(vrais_resultats_rang.values())) != limite_resultats: st.error(t['ERR_INCOMPLETE_RESULTS'].format(limite_resultats))
                 else:
                     st.session_state.evenements[evenement_actif]["vrais_resultats"] = vrais_resultats_rang
                     sauvegarder_donnees()
@@ -490,7 +501,6 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
             
             if st.session_state.evenements[evenement_actif].get("vrais_resultats"):
                 vrais_res = st.session_state.evenements[evenement_actif]["vrais_resultats"]
-                
                 vrais_res_propres = {int(k): v for k, v in vrais_res.items()}
                 vrais_resultats_athlete = {athlete: int(rang) for rang, athlete in vrais_res_propres.items()}
                 
@@ -509,7 +519,7 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
                         score += len(vrai_top_3.intersection(pred_top_3))
                         if preds.get(vrai_premier) == 1: score += 1
                     
-                    elif ev_type == "demi-finale":
+                    elif ev_type == "qualif":
                         for athl in preds.keys():
                             if athl in vrais_resultats_athlete: score += 1
                             
@@ -521,20 +531,23 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
                 df_scores.index += 1
                 st.dataframe(df_scores, use_container_width=True)
 
-                if ev_type == "demi-finale":
+                if ev_type == "qualif":
                     st.write("---")
-                    nom_nouvelle_finale = f"{evenement_actif} - FINALE"
-                    if st.button(t['BTN_CREATE_FINAL_FROM_DEMI']):
-                        if nom_nouvelle_finale not in st.session_state.evenements:
-                            st.session_state.evenements[nom_nouvelle_finale] = {
-                                "type": "finale",
+                    nom_nouvelle_ronde = f"{evenement_actif} - RONDE SUIVANTE"
+                    if st.button(t['BTN_CREATE_NEXT_ROUND'].format(nb_q)):
+                        if nom_nouvelle_ronde not in st.session_state.evenements:
+                            nouveau_type = "finale" if nb_q == 8 else "qualif"
+                            nouv_nb_q = 8 # Par défaut pour la prochaine ronde si c'était 16 ou 24
+                            st.session_state.evenements[nom_nouvelle_ronde] = {
+                                "type": nouveau_type,
+                                "nb_qualifies": nouv_nb_q,
                                 "finalistes": list(vrais_res_propres.values()),
                                 "predictions": {}, "vrais_resultats": None, "statut": "actif"
                             }
                             sauvegarder_donnees()
                             st.success(t['SUCCESS_LINKED_FINAL'])
                         else:
-                            st.info("Cette finale a déjà été générée.")
+                            st.info("Cette ronde a déjà été générée.")
 
         # --- F. ARCHIVES ---
         elif action_coach == "MANAGE_ARCHIVES":
