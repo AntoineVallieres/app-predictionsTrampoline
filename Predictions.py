@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 import json
-import os
+import gspread
+from google.oauth2.service_account import Credentials
 
 # --- ÉTAPE A : LE DICTIONNAIRE DE TRADUCTIONS ---
 TEXTS = {
@@ -16,8 +17,6 @@ TEXTS = {
         'WELCOME_MSG_COACH_ACTION': "Veuillez aller dans la 'Zone Admin' pour créer votre premier événement.",
         'CHOOSE_EVENT_LABEL': "Choisir l'épreuve :",
         'NAVI_SUB_GO': "Aller à :",
-        
-        # Section 1 : Prédiction
         'SUB_PREDICT_TITLE': "Fais tes choix",
         'INPUT_NAME_LABEL': "Quel est ton nom?",
         'INPUT_FIN_RANK_LABEL': "Rang pour",
@@ -28,23 +27,17 @@ TEXTS = {
         'SUCCESS_PREDICT_RECORDED': "✅ Tes prédictions sont enregistrées, {0}!",
         'MULTISELECT_QUALIF_LABEL': "Sélectionne tes {0} qualifiés en cochant les noms :",
         'ERR_NOT_N_SELECTED': "Tu dois sélectionner EXACTEMENT {0} athlètes.",
-
-        # Section 2 : Voir
         'SUB_VIEW_TITLE': "📊 Tableau des prédictions",
         'INFO_RESULTS_ENTERED': "Les résultats officiels sont entrés ! Compare les choix avec la première colonne.",
         'TABLE_PREDICTS_COL_TRUE_RESULT': "🏆 RÉSULTAT",
         'TABLE_PREDICTS_COL_RANK': "Rang / Choix",
         'INFO_NO_PREDICTS': "Aucune prédiction pour le moment.",
-
-        # Section 3 : Admin - Login
         'SUB_COACH_TITLE': "🔒 Zone d'administration",
         'COACH_LOGIN_TEXT': "Cette zone est réservée à l'administrateur.",
         'INPUT_PWD_LABEL': "Mot de passe :",
         'BTN_UNLOCK': "Déverrouiller",
         'ERR_WRONG_PWD': "Mot de passe incorrect.",
         'BTN_LOGOUT': "Se déconnecter (Verrouiller)",
-
-        # Section 3 : Admin - Actions
         'COACH_ACTION_LABEL': "Action :",
         'ACTION_CREATE_EVENT': "Créer une nouvelle épreuve",
         'ACTION_RENAME_EVENT': "Renommer l'épreuve",
@@ -52,7 +45,6 @@ TEXTS = {
         'ACTION_EDIT_PARTICIPANT_NAME': "Modifier le nom d'un participant",
         'ACTION_ENTER_RESULTS': "Entrer les résultats et calculer",
         'ACTION_MANAGE_ARCHIVES': "Gérer / Archiver les épreuves",
-
         'SUB_CREATE_EVENT': "➕ Ajouter une compétition",
         'INPUT_NEW_EVENT_NAME': "Nom de l'épreuve",
         'EVENT_TYPE_LABEL': "Type d'épreuve :",
@@ -62,12 +54,10 @@ TEXTS = {
         'BTN_CREATE_EVENT': "Créer l'épreuve",
         'SUCCESS_EVENT_CREATED': "L'épreuve a été créée ! Rends-toi dans 'Modifier la liste de départ'.",
         'ERR_EVENT_EXISTS': "Une épreuve porte déjà ce nom.",
-
         'SUB_RENAME_EVENT': "✏️ Renommer l'épreuve",
         'INPUT_NEW_NAME_EV': "Nouveau nom :",
         'BTN_CONFIRM_RENAME': "Confirmer le nouveau nom",
         'SUCCESS_RENAMED': "L'épreuve a été renommée avec succès !",
-
         'SUB_EDIT_FIN': "📝 Liste de départ pour",
         'INPUT_ATHLETES_AREA': "Copie/Colle les noms des athlètes ici (UN ATHLÈTE PAR LIGNE) :",
         'BTN_SAVE_FIN_NAMES': "Sauvegarder la liste",
@@ -75,7 +65,6 @@ TEXTS = {
         'ERR_NOT_EXACTLY_8': "Pour une finale, tu dois inscrire EXACTEMENT 8 athlètes.",
         'ERR_NOT_ENOUGH_QUALIF': "Pour cette ronde, tu dois inscrire plus de {0} athlètes au total.",
         'SUCCESS_FIN_NAMES_UPDATED': "La liste a été mise à jour !",
-
         'SUB_EDIT_PART': "👤 Corriger le nom d'un participant",
         'INPUT_SELECT_PART_LABEL': "Sélectionner le participant :",
         'INPUT_NEW_NAME_PART_LABEL': "Nouveau nom :",
@@ -83,19 +72,16 @@ TEXTS = {
         'SUCCESS_PART_NAME_UPDATED': "Le nom du participant a été corrigé !",
         'ERR_PART_NAME_EXISTS': "Ce nom existe déjà.",
         'INFO_NO_PART_YET': "Aucun participant pour cette épreuve.",
-
         'SUB_ENTER_RESULTS': "🏆 Résultats officiels pour l'épreuve",
         'INPUT_TRUE_POS': "Vraie position {0}",
         'BTN_CALC_RESULTS': "CALCULER ET APPLIQUER LES COULEURS",
         'ERR_INCOMPLETE_RESULTS': "Remplis les {0} positions avec des athlètes différents.",
         'SUCCESS_RESULTS_SAVED': "Résultats sauvegardés !",
-        
         'CALC_LEADERBOARD_TITLE': "Classement final des experts",
         'CALC_COL_PART': "Participant",
         'CALC_COL_POINTS': "Points Total",
         'BTN_CREATE_NEXT_ROUND': "🔗 Créer la RONDE SUIVANTE avec ces {0} athlètes",
         'SUCCESS_LINKED_FINAL': "La ronde suivante a été créée avec succès !",
-
         'SUB_MANAGE_ARCHIVES': "🗑️ Nettoyage des événements",
         'INFO_NO_EVENTS_TO_MANAGE': "Aucun événement à gérer.",
         'ARCHIVE_STATUS_LABEL': "Statut actuel :",
@@ -119,7 +105,6 @@ TEXTS = {
         'WELCOME_MSG_COACH_ACTION': "Please go to the 'Admin Zone' to create your first event.",
         'CHOOSE_EVENT_LABEL': "Choose the event:",
         'NAVI_SUB_GO': "Go to:",
-
         'SUB_PREDICT_TITLE': "Make your choices",
         'INPUT_NAME_LABEL': "What is your name?",
         'INPUT_FIN_RANK_LABEL': "Rank for",
@@ -130,20 +115,17 @@ TEXTS = {
         'SUCCESS_PREDICT_RECORDED': "✅ Your predictions are recorded, {0}!",
         'MULTISELECT_QUALIF_LABEL': "Select your {0} qualifiers by checking the names:",
         'ERR_NOT_N_SELECTED': "You must select EXACTLY {0} athletes.",
-
         'SUB_VIEW_TITLE': "📊 Prediction Leaderboard",
         'INFO_RESULTS_ENTERED': "Official results are in! Compare choices with the first column.",
         'TABLE_PREDICTS_COL_TRUE_RESULT': "🏆 RESULTS",
         'TABLE_PREDICTS_COL_RANK': "Rank / Choice",
         'INFO_NO_PREDICTS': "No predictions have been made yet.",
-
         'SUB_COACH_TITLE': "🔒 Admin Area",
         'COACH_LOGIN_TEXT': "This zone is for the admin only.",
         'INPUT_PWD_LABEL': "Password:",
         'BTN_UNLOCK': "Unlock",
         'ERR_WRONG_PWD': "Incorrect password.",
         'BTN_LOGOUT': "Log out (Lock)",
-
         'COACH_ACTION_LABEL': "Action:",
         'ACTION_CREATE_EVENT': "Create a new event",
         'ACTION_RENAME_EVENT': "Rename event",
@@ -151,7 +133,6 @@ TEXTS = {
         'ACTION_EDIT_PARTICIPANT_NAME': "Edit a participant's name",
         'ACTION_ENTER_RESULTS': "Enter results and calculate",
         'ACTION_MANAGE_ARCHIVES': "Manage / Archive events",
-
         'SUB_CREATE_EVENT': "➕ Add an event",
         'INPUT_NEW_EVENT_NAME': "Event name",
         'EVENT_TYPE_LABEL': "Event Type:",
@@ -161,12 +142,10 @@ TEXTS = {
         'BTN_CREATE_EVENT': "Create event",
         'SUCCESS_EVENT_CREATED': "Event created! Go to 'Edit start list'.",
         'ERR_EVENT_EXISTS': "An event already has this name.",
-
         'SUB_RENAME_EVENT': "✏️ Rename event",
         'INPUT_NEW_NAME_EV': "New name:",
         'BTN_CONFIRM_RENAME': "Confirm new name",
         'SUCCESS_RENAMED': "Event renamed successfully!",
-
         'SUB_EDIT_FIN': "📝 Start list for",
         'INPUT_ATHLETES_AREA': "Copy/Paste athlete names here (ONE ATHLETE PER LINE):",
         'BTN_SAVE_FIN_NAMES': "Save list",
@@ -174,7 +153,6 @@ TEXTS = {
         'ERR_NOT_EXACTLY_8': "For a final, you must enter EXACTLY 8 athletes.",
         'ERR_NOT_ENOUGH_QUALIF': "For this round, you must enter more than {0} athletes in total.",
         'SUCCESS_FIN_NAMES_UPDATED': "List has been updated!",
-
         'SUB_EDIT_PART': "👤 Correct participant name",
         'INPUT_SELECT_PART_LABEL': "Select participant:",
         'INPUT_NEW_NAME_PART_LABEL': "New name:",
@@ -182,19 +160,16 @@ TEXTS = {
         'SUCCESS_PART_NAME_UPDATED': "Participant name corrected!",
         'ERR_PART_NAME_EXISTS': "Name already exists.",
         'INFO_NO_PART_YET': "No participant yet.",
-
         'SUB_ENTER_RESULTS': "🏆 Official results for",
         'INPUT_TRUE_POS': "True position {0}",
         'BTN_CALC_RESULTS': "CALCULATE AND APPLY COLORS",
         'ERR_INCOMPLETE_RESULTS': "Fill all {0} positions with different athletes.",
         'SUCCESS_RESULTS_SAVED': "Results saved!",
-
         'CALC_LEADERBOARD_TITLE': "Final Leaderboard",
         'CALC_COL_PART': "Participant",
         'CALC_COL_POINTS': "Total Points",
         'BTN_CREATE_NEXT_ROUND': "🔗 Create NEXT ROUND with these {0} athletes",
         'SUCCESS_LINKED_FINAL': "Next round successfully created!",
-
         'SUB_MANAGE_ARCHIVES': "🗑️ Event Management",
         'INFO_NO_EVENTS_TO_MANAGE': "No events to manage.",
         'ARCHIVE_STATUS_LABEL': "Current status:",
@@ -210,31 +185,52 @@ TEXTS = {
 }
 
 st.set_page_config(page_title="Team Predictions", page_icon="🤸", layout="wide")
-FICHIER_DONNEES = "historique_competitions.json"
 
 st.sidebar.markdown(f"**{TEXTS['Français']['SIDEBAR_LANG_LABEL']}**")
 selected_lang = st.sidebar.selectbox("", options=['Français', 'English'], label_visibility="collapsed")
 t = TEXTS[selected_lang]
-
 st.markdown(f"<script>document.title = '{t['APP_TITLE']}'</script>", unsafe_allow_html=True)
 
+
+# --- CONNEXION À GOOGLE SHEETS ---
+def get_sheet():
+    creds_json = st.secrets["google_json"]
+    creds_dict = json.loads(creds_json)
+    credentials = Credentials.from_service_account_info(
+        creds_dict,
+        scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+    )
+    gc = gspread.authorize(credentials)
+    # Le nom exact de ton fichier Google Sheets
+    sh = gc.open("BaseDeDonnees_Trampoline")
+    return sh.sheet1
+
 def charger_donnees():
-    if os.path.exists(FICHIER_DONNEES):
-        with open(FICHIER_DONNEES, "r", encoding="utf-8") as f:
-            donnees = json.load(f)
-            # Patch de rétrocompatibilité
+    try:
+        sheet = get_sheet()
+        valeur = sheet.acell('A1').value
+        if valeur:
+            donnees = json.loads(valeur)
             for ev_nom, ev_data in donnees.items():
                 if "statut" not in ev_data: ev_data["statut"] = "actif"
                 if "vrais_resultats" not in ev_data: ev_data["vrais_resultats"] = None
                 if "type" not in ev_data: ev_data["type"] = "finale"
-                if ev_data["type"] == "demi-finale": ev_data["type"] = "qualif" # Mise à jour de l'ancien code
+                if ev_data["type"] == "demi-finale": ev_data["type"] = "qualif"
                 if "nb_qualifies" not in ev_data: ev_data["nb_qualifies"] = 8
             return donnees
+    except Exception as e:
+        # Si une erreur survient (ex: test local sans clé), on retourne vide
+        pass
     return {}
 
 def sauvegarder_donnees():
-    with open(FICHIER_DONNEES, "w", encoding="utf-8") as f:
-        json.dump(st.session_state.evenements, f, ensure_ascii=False, indent=4)
+    try:
+        sheet = get_sheet()
+        donnees_json = json.dumps(st.session_state.evenements, ensure_ascii=False)
+        # On écrit la base de données entière dans la case A1
+        sheet.update_acell('A1', donnees_json)
+    except Exception as e:
+        st.error(f"Erreur de sauvegarde Cloud : {e}")
 
 if 'evenements' not in st.session_state:
     st.session_state.evenements = charger_donnees()
@@ -267,7 +263,7 @@ if evenement_actif and choix == t['NAVI_PREDICT']:
     ev_type = st.session_state.evenements[evenement_actif].get("type", "finale")
     finalistes_actuels = st.session_state.evenements[evenement_actif]["finalistes"]
     
-    # LOGIQUE FINALE : Classer de 1 à 8
+    # LOGIQUE FINALE
     if ev_type == "finale":
         choix_utilisateur = {}
         colonnes = st.columns(2)
@@ -286,7 +282,7 @@ if evenement_actif and choix == t['NAVI_PREDICT']:
                 sauvegarder_donnees()
                 st.success(t['SUCCESS_PREDICT_RECORDED'].format(nom_athlete))
 
-    # LOGIQUE QUALIFICATION : Grille de sélection visuelle (cases à cocher)
+    # LOGIQUE QUALIFICATION
     elif ev_type == "qualif":
         nb_q = st.session_state.evenements[evenement_actif].get("nb_qualifies", 8)
         st.write(f"**{t['MULTISELECT_QUALIF_LABEL'].format(nb_q)}**")
@@ -537,7 +533,7 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
                     if st.button(t['BTN_CREATE_NEXT_ROUND'].format(nb_q)):
                         if nom_nouvelle_ronde not in st.session_state.evenements:
                             nouveau_type = "finale" if nb_q == 8 else "qualif"
-                            nouv_nb_q = 8 # Par défaut pour la prochaine ronde si c'était 16 ou 24
+                            nouv_nb_q = 8
                             st.session_state.evenements[nom_nouvelle_ronde] = {
                                 "type": nouveau_type,
                                 "nb_qualifies": nouv_nb_q,
