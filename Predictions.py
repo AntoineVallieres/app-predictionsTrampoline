@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import json
 import gspread
+import math
 from google.oauth2.service_account import Credentials
 
 # --- ÉTAPE A : LE DICTIONNAIRE DE TRADUCTIONS ---
@@ -19,14 +20,17 @@ TEXTS = {
         'NAVI_SUB_GO': "Aller à :",
         'SUB_PREDICT_TITLE': "Fais tes choix",
         'INPUT_NAME_LABEL': "Quel est ton nom?",
+        'INFO_INPUT_NAME_FIRST': "👆 Veuillez d'abord entrer votre nom ci-dessus pour charger vos prédictions ou en faire de nouvelles.",
         'INPUT_FIN_RANK_LABEL': "Rang pour",
-        'BTN_CONFIRM_PREDICT': "CONFIRMER MES PRÉDICTIONS",
+        'BTN_SAVE_DRAFT': "Sauvegarder le brouillon",
+        'BTN_SUBMIT_FINAL': "Soumettre la version finale",
         'ERR_NO_NAME': "N'oublie pas d'inscrire ton nom!",
         'ERR_PREDICT_INCOMPLETE': "Tu dois assigner une position à TOUS les athlètes.",
         'ERR_PREDICT_DUPLICATE_RANK': "Tu as donné la même position à plus d'un athlète.",
         'SUCCESS_PREDICT_RECORDED': "✅ Tes prédictions sont enregistrées, {0}!",
+        'SUCCESS_DRAFT_RECORDED': "📝 Ton brouillon a été sauvegardé, {0}. Tu pourras revenir plus tard!",
         'MULTISELECT_QUALIF_LABEL': "Sélectionne tes {0} qualifiés en cochant les noms :",
-        'ERR_NOT_N_SELECTED': "Tu dois sélectionner EXACTEMENT {0} athlètes.",
+        'ERR_NOT_N_SELECTED': "Tu dois sélectionner EXACTEMENT {0} athlètes pour la version finale.",
         'SUB_VIEW_TITLE': "📊 Tableau des prédictions",
         'INFO_RESULTS_ENTERED': "Les résultats officiels sont entrés ! Compare les choix avec la première colonne.",
         'TABLE_PREDICTS_COL_TRUE_RESULT': "🏆 RÉSULTAT",
@@ -42,7 +46,10 @@ TEXTS = {
         'ACTION_CREATE_EVENT': "Créer une nouvelle épreuve",
         'ACTION_RENAME_EVENT': "Renommer l'épreuve",
         'ACTION_EDIT_FIN': "Modifier la liste de départ",
+        'ACTION_CHANGE_NB_Q': "Modifier le nombre de qualifiés",
+        'ACTION_REPLACE_ATHLETE': "Remplacer un athlète",
         'ACTION_EDIT_PARTICIPANT_NAME': "Modifier le nom d'un participant",
+        'ACTION_DELETE_PRED': "Supprimer une prédiction",
         'ACTION_ENTER_RESULTS': "Entrer les résultats et calculer",
         'ACTION_MANAGE_ARCHIVES': "Gérer / Archiver les épreuves",
         'SUB_CREATE_EVENT': "➕ Ajouter une compétition",
@@ -65,6 +72,16 @@ TEXTS = {
         'ERR_NOT_EXACTLY_8': "Pour une finale, tu dois inscrire EXACTEMENT 8 athlètes.",
         'ERR_NOT_ENOUGH_QUALIF': "Pour cette ronde, tu dois inscrire plus de {0} athlètes au total.",
         'SUCCESS_FIN_NAMES_UPDATED': "La liste a été mise à jour !",
+        'SUB_CHANGE_NB_Q': "🔢 Modifier le nombre de qualifiés",
+        'INPUT_NEW_NB_LABEL': "Nouveau nombre :",
+        'BTN_SAVE_NB': "Sauvegarder le nombre",
+        'SUCCESS_NB_CHANGED': "Nombre de qualifiés mis à jour !",
+        'WARN_ONLY_QUALIF': "Cette action n'est valide que pour les rondes de qualification.",
+        'SUB_REPLACE_ATHLETE': "🔄 Remplacer un athlète",
+        'OLD_ATHLETE_LABEL': "Ancien athlète :",
+        'NEW_ATHLETE_LABEL': "Nouvel athlète :",
+        'BTN_REPLACE': "Remplacer",
+        'SUCCESS_REPLACED': "Athlète remplacé avec succès !",
         'SUB_EDIT_PART': "👤 Corriger le nom d'un participant",
         'INPUT_SELECT_PART_LABEL': "Sélectionner le participant :",
         'INPUT_NEW_NAME_PART_LABEL': "Nouveau nom :",
@@ -72,6 +89,9 @@ TEXTS = {
         'SUCCESS_PART_NAME_UPDATED': "Le nom du participant a été corrigé !",
         'ERR_PART_NAME_EXISTS': "Ce nom existe déjà.",
         'INFO_NO_PART_YET': "Aucun participant pour cette épreuve.",
+        'SUB_DELETE_PRED': "🗑️ Supprimer une prédiction",
+        'BTN_DELETE_PRED': "Supprimer la prédiction",
+        'SUCCESS_PRED_DELETED': "Prédiction supprimée avec succès !",
         'SUB_ENTER_RESULTS': "🏆 Résultats officiels pour l'épreuve",
         'INPUT_TRUE_POS': "Vraie position {0}",
         'BTN_CALC_RESULTS': "CALCULER ET APPLIQUER LES COULEURS",
@@ -92,7 +112,10 @@ TEXTS = {
         'SUCCESS_ARCHIVED': "Épreuve archivée !",
         'SUCCESS_UNARCHIVED': "Épreuve réactivée !",
         'COL2_BTN_DELETE_FOREVER': "Dossier rouge : Supprimer DÉFINITIVEMENT",
-        'SUCCESS_DELETED': "L'épreuve a été supprimée."
+        'SUCCESS_DELETED': "L'épreuve a été supprimée.",
+        'LEGEND_UNANIMOUS': "⚪ Gris : Sélectionné à l'unanimité (n'influence pas le pointage).",
+        'LEGEND_FINAL_RES_FINALE': "Légende : 🟢 Bonne position | 🟡 Top 3 mais mauvaise position | 🔴 Mauvaise position",
+        'LEGEND_FINAL_RES_QUALIF': "Légende : 🟢 Qualifié trouvé | 🔴 Non qualifié"
     },
     'English': {
         'APP_TITLE': "🤸 Team Predictions",
@@ -107,14 +130,17 @@ TEXTS = {
         'NAVI_SUB_GO': "Go to:",
         'SUB_PREDICT_TITLE': "Make your choices",
         'INPUT_NAME_LABEL': "What is your name?",
+        'INFO_INPUT_NAME_FIRST': "👆 Please enter your name above first to load your predictions or start new ones.",
         'INPUT_FIN_RANK_LABEL': "Rank for",
-        'BTN_CONFIRM_PREDICT': "CONFIRM MY PREDICTIONS",
+        'BTN_SAVE_DRAFT': "Save as draft",
+        'BTN_SUBMIT_FINAL': "Submit final version",
         'ERR_NO_NAME': "Don't forget to enter your name!",
         'ERR_PREDICT_INCOMPLETE': "You must assign a position to ALL athletes.",
         'ERR_PREDICT_DUPLICATE_RANK': "You have given the same position to more than one athlete.",
         'SUCCESS_PREDICT_RECORDED': "✅ Your predictions are recorded, {0}!",
+        'SUCCESS_DRAFT_RECORDED': "📝 Your draft is saved, {0}. You can come back later!",
         'MULTISELECT_QUALIF_LABEL': "Select your {0} qualifiers by checking the names:",
-        'ERR_NOT_N_SELECTED': "You must select EXACTLY {0} athletes.",
+        'ERR_NOT_N_SELECTED': "You must select EXACTLY {0} athletes for the final version.",
         'SUB_VIEW_TITLE': "📊 Prediction Leaderboard",
         'INFO_RESULTS_ENTERED': "Official results are in! Compare choices with the first column.",
         'TABLE_PREDICTS_COL_TRUE_RESULT': "🏆 RESULTS",
@@ -130,7 +156,10 @@ TEXTS = {
         'ACTION_CREATE_EVENT': "Create a new event",
         'ACTION_RENAME_EVENT': "Rename event",
         'ACTION_EDIT_FIN': "Edit start list",
+        'ACTION_CHANGE_NB_Q': "Modify the number of qualifiers",
+        'ACTION_REPLACE_ATHLETE': "Replace an athlete",
         'ACTION_EDIT_PARTICIPANT_NAME': "Edit a participant's name",
+        'ACTION_DELETE_PRED': "Delete a prediction",
         'ACTION_ENTER_RESULTS': "Enter results and calculate",
         'ACTION_MANAGE_ARCHIVES': "Manage / Archive events",
         'SUB_CREATE_EVENT': "➕ Add an event",
@@ -153,6 +182,16 @@ TEXTS = {
         'ERR_NOT_EXACTLY_8': "For a final, you must enter EXACTLY 8 athletes.",
         'ERR_NOT_ENOUGH_QUALIF': "For this round, you must enter more than {0} athletes in total.",
         'SUCCESS_FIN_NAMES_UPDATED': "List has been updated!",
+        'SUB_CHANGE_NB_Q': "🔢 Modify the number of qualifiers",
+        'INPUT_NEW_NB_LABEL': "New number:",
+        'BTN_SAVE_NB': "Save number",
+        'SUCCESS_NB_CHANGED': "Number of qualifiers updated!",
+        'WARN_ONLY_QUALIF': "This action is only valid for qualification rounds.",
+        'SUB_REPLACE_ATHLETE': "🔄 Replace an athlete",
+        'OLD_ATHLETE_LABEL': "Old athlete:",
+        'NEW_ATHLETE_LABEL': "New athlete:",
+        'BTN_REPLACE': "Replace",
+        'SUCCESS_REPLACED': "Athlete successfully replaced!",
         'SUB_EDIT_PART': "👤 Correct participant name",
         'INPUT_SELECT_PART_LABEL': "Select participant:",
         'INPUT_NEW_NAME_PART_LABEL': "New name:",
@@ -160,6 +199,9 @@ TEXTS = {
         'SUCCESS_PART_NAME_UPDATED': "Participant name corrected!",
         'ERR_PART_NAME_EXISTS': "Name already exists.",
         'INFO_NO_PART_YET': "No participant yet.",
+        'SUB_DELETE_PRED': "🗑️ Delete a prediction",
+        'BTN_DELETE_PRED': "Delete prediction",
+        'SUCCESS_PRED_DELETED': "Prediction successfully deleted!",
         'SUB_ENTER_RESULTS': "🏆 Official results for",
         'INPUT_TRUE_POS': "True position {0}",
         'BTN_CALC_RESULTS': "CALCULATE AND APPLY COLORS",
@@ -180,7 +222,10 @@ TEXTS = {
         'SUCCESS_ARCHIVED': "Event archived!",
         'SUCCESS_UNARCHIVED': "Event reactivated!",
         'COL2_BTN_DELETE_FOREVER': "Red Folder: Delete FOREVER",
-        'SUCCESS_DELETED': "Event deleted forever."
+        'SUCCESS_DELETED': "Event deleted forever.",
+        'LEGEND_UNANIMOUS': "⚪ Grey: Unanimously selected (does not influence scoring).",
+        'LEGEND_FINAL_RES_FINALE': "Legend: 🟢 Correct position | 🟡 Top 3 but wrong position | 🔴 Wrong position",
+        'LEGEND_FINAL_RES_QUALIF': "Legend: 🟢 Qualifier found | 🔴 Not qualified"
     }
 }
 
@@ -191,7 +236,6 @@ selected_lang = st.sidebar.selectbox("", options=['Français', 'English'], label
 t = TEXTS[selected_lang]
 st.markdown(f"<script>document.title = '{t['APP_TITLE']}'</script>", unsafe_allow_html=True)
 
-
 # --- CONNEXION À GOOGLE SHEETS ---
 def get_sheet():
     creds_json = st.secrets["google_json"]
@@ -201,7 +245,6 @@ def get_sheet():
         scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
     )
     gc = gspread.authorize(credentials)
-    # Le nom exact de ton fichier Google Sheets
     sh = gc.open("BaseDeDonnees_Trampoline")
     return sh.sheet1
 
@@ -217,9 +260,13 @@ def charger_donnees():
                 if "type" not in ev_data: ev_data["type"] = "finale"
                 if ev_data["type"] == "demi-finale": ev_data["type"] = "qualif"
                 if "nb_qualifies" not in ev_data: ev_data["nb_qualifies"] = 8
+                
+                # PATCH : Conversion des anciennes prédictions vers le format Brouillon/Final
+                for nom, preds in ev_data.get("predictions", {}).items():
+                    if not isinstance(preds, dict) or "choix" not in preds:
+                        ev_data["predictions"][nom] = {"choix": preds, "statut": "final"}
             return donnees
     except Exception as e:
-        # Si une erreur survient (ex: test local sans clé), on retourne vide
         pass
     return {}
 
@@ -227,7 +274,6 @@ def sauvegarder_donnees():
     try:
         sheet = get_sheet()
         donnees_json = json.dumps(st.session_state.evenements, ensure_ascii=False)
-        # On écrit la base de données entière dans la case A1
         sheet.update_acell('A1', donnees_json)
     except Exception as e:
         st.error(f"Erreur de sauvegarde Cloud : {e}")
@@ -241,7 +287,9 @@ st.title(t['APP_TITLE'])
 
 st.sidebar.markdown("---")
 st.sidebar.header(t['NAVI_LABEL'])
-liste_evenements_actifs = [ev for ev, data in st.session_state.evenements.items() if data.get("statut", "actif") == "actif"]
+
+# Ordre alphabétique des événements dans le menu (#9)
+liste_evenements_actifs = sorted([ev for ev, data in st.session_state.evenements.items() if data.get("statut", "actif") == "actif"])
 
 if not liste_evenements_actifs:
     st.sidebar.info(t['WELCOME_MSG_COACH_ACTION'])
@@ -260,54 +308,100 @@ if evenement_actif and choix == t['NAVI_PREDICT']:
     st.header(f"{t['SUB_PREDICT_TITLE']} : {evenement_actif}")
     nom_athlete = st.text_input(t['INPUT_NAME_LABEL'])
     
-    ev_type = st.session_state.evenements[evenement_actif].get("type", "finale")
-    finalistes_actuels = st.session_state.evenements[evenement_actif]["finalistes"]
-    
-    # LOGIQUE FINALE
-    if ev_type == "finale":
-        choix_utilisateur = {}
-        colonnes = st.columns(2)
-        for i, athlete in enumerate(finalistes_actuels):
-            with colonnes[i % 2]:
-                position = st.selectbox(f"{t['INPUT_FIN_RANK_LABEL']} {athlete}", options=[None, 1, 2, 3, 4, 5, 6, 7, 8], key=f"pred_{athlete}")
-                choix_utilisateur[athlete] = position
-                
-        if st.button(t['BTN_CONFIRM_PREDICT'], type="primary"):
-            valeurs = list(choix_utilisateur.values())
-            if not nom_athlete: st.error(t['ERR_NO_NAME'])
-            elif None in valeurs: st.error(t['ERR_PREDICT_INCOMPLETE'])
-            elif len(set(valeurs)) != 8: st.error(t['ERR_PREDICT_DUPLICATE_RANK'])
-            else:
-                st.session_state.evenements[evenement_actif]["predictions"][nom_athlete] = choix_utilisateur
-                sauvegarder_donnees()
-                st.success(t['SUCCESS_PREDICT_RECORDED'].format(nom_athlete))
+    if nom_athlete:
+        ev_type = st.session_state.evenements[evenement_actif].get("type", "finale")
+        finalistes_actuels = st.session_state.evenements[evenement_actif]["finalistes"]
+        
+        # Chargement des données existantes (brouillon ou final)
+        saved_data = st.session_state.evenements[evenement_actif]["predictions"].get(nom_athlete, {"choix": {}, "statut": "brouillon"})
+        saved_choix = saved_data["choix"]
+        
+        # LOGIQUE FINALE
+        if ev_type == "finale":
+            choix_utilisateur = {}
+            colonnes = st.columns(2)
+            for i, athlete in enumerate(finalistes_actuels):
+                with colonnes[i % 2]:
+                    val_defaut = saved_choix.get(athlete)
+                    options = [None, 1, 2, 3, 4, 5, 6, 7, 8]
+                    idx_defaut = options.index(val_defaut) if val_defaut in options else 0
+                    position = st.selectbox(f"{t['INPUT_FIN_RANK_LABEL']} {athlete}", options=options, index=idx_defaut, key=f"pred_{evenement_actif}_{nom_athlete}_{athlete}")
+                    choix_utilisateur[athlete] = position
+            
+            st.write("")
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button(t['BTN_SAVE_DRAFT']):
+                    st.session_state.evenements[evenement_actif]["predictions"][nom_athlete] = {"choix": choix_utilisateur, "statut": "brouillon"}
+                    sauvegarder_donnees()
+                    st.success(t['SUCCESS_DRAFT_RECORDED'].format(nom_athlete))
+            with c2:
+                if st.button(t['BTN_SUBMIT_FINAL'], type="primary"):
+                    valeurs = list(choix_utilisateur.values())
+                    if None in valeurs: st.error(t['ERR_PREDICT_INCOMPLETE'])
+                    elif len(set(valeurs)) != 8: st.error(t['ERR_PREDICT_DUPLICATE_RANK'])
+                    else:
+                        st.session_state.evenements[evenement_actif]["predictions"][nom_athlete] = {"choix": choix_utilisateur, "statut": "final"}
+                        sauvegarder_donnees()
+                        st.success(t['SUCCESS_PREDICT_RECORDED'].format(nom_athlete))
 
-    # LOGIQUE QUALIFICATION
-    elif ev_type == "qualif":
-        nb_q = st.session_state.evenements[evenement_actif].get("nb_qualifies", 8)
-        st.write(f"**{t['MULTISELECT_QUALIF_LABEL'].format(nb_q)}**")
-        
-        colonnes_demi = st.columns(3)
-        choix_utilisateur = []
-        
-        for i, athlete in enumerate(finalistes_actuels):
-            with colonnes_demi[i % 3]:
-                if st.checkbox(athlete, key=f"check_{athlete}"):
-                    choix_utilisateur.append(athlete)
-                    
-        couleur_compteur = "green" if len(choix_utilisateur) == nb_q else "red"
-        label_compteur = "Sélectionnés" if selected_lang == 'Français' else "Selected"
-        st.markdown(f"**{label_compteur} : <span style='color:{couleur_compteur}'>{len(choix_utilisateur)} / {nb_q}</span>**", unsafe_allow_html=True)
-        st.write("") 
-        
-        if st.button(t['BTN_CONFIRM_PREDICT'], type="primary"):
-            if not nom_athlete: st.error(t['ERR_NO_NAME'])
-            elif len(choix_utilisateur) != nb_q: st.error(t['ERR_NOT_N_SELECTED'].format(nb_q))
-            else:
-                dict_choix = {athlete: (i+1) for i, athlete in enumerate(choix_utilisateur)}
-                st.session_state.evenements[evenement_actif]["predictions"][nom_athlete] = dict_choix
-                sauvegarder_donnees()
-                st.success(t['SUCCESS_PREDICT_RECORDED'].format(nom_athlete))
+        # LOGIQUE QUALIFICATION (#2, #7, #8)
+        elif ev_type == "qualif":
+            nb_q = st.session_state.evenements[evenement_actif].get("nb_qualifies", 8)
+            st.write(f"**{t['MULTISELECT_QUALIF_LABEL'].format(nb_q)}**")
+            
+            # Calcul du nombre sélectionné ACTUELLEMENT avant l'affichage (#7)
+            current_selections = []
+            for a in finalistes_actuels:
+                chk_key = f"chk_{evenement_actif}_{nom_athlete}_{a}"
+                if chk_key not in st.session_state:
+                    st.session_state[chk_key] = (a in saved_choix)
+                if st.session_state[chk_key]:
+                    current_selections.append(a)
+            
+            limit_reached = len(current_selections) >= nb_q
+            
+            # Tri alphabétique puis séparation mathématique pour affichage vertical sur mobile (#2)
+            sorted_athletes = sorted(finalistes_actuels)
+            n_ath = len(sorted_athletes)
+            col1_len = math.ceil(n_ath / 3)
+            col2_len = math.ceil((n_ath - col1_len) / 2)
+            lists_vertical = [sorted_athletes[:col1_len], sorted_athletes[col1_len:col1_len+col2_len], sorted_athletes[col1_len+col2_len:]]
+            
+            colonnes_demi = st.columns(3)
+            for i, chunk in enumerate(lists_vertical):
+                with colonnes_demi[i]:
+                    for a in chunk:
+                        chk_key = f"chk_{evenement_actif}_{nom_athlete}_{a}"
+                        is_checked = st.session_state[chk_key]
+                        # Désactiver si on a atteint la limite ET que la case n'est pas cochée (#7)
+                        st.checkbox(a, key=chk_key, disabled=(limit_reached and not is_checked))
+                        
+            # Recalcul final en direct pour le bouton
+            final_selections = [a for a in finalistes_actuels if st.session_state.get(f"chk_{evenement_actif}_{nom_athlete}_{a}")]
+            
+            couleur_compteur = "green" if len(final_selections) == nb_q else "red"
+            label_compteur = "Sélectionnés" if selected_lang == 'Français' else "Selected"
+            st.markdown(f"**{label_compteur} : <span style='color:{couleur_compteur}'>{len(final_selections)} / {nb_q}</span>**", unsafe_allow_html=True)
+            st.write("") 
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button(t['BTN_SAVE_DRAFT']):
+                    dict_choix = {athlete: (i+1) for i, athlete in enumerate(final_selections)}
+                    st.session_state.evenements[evenement_actif]["predictions"][nom_athlete] = {"choix": dict_choix, "statut": "brouillon"}
+                    sauvegarder_donnees()
+                    st.success(t['SUCCESS_DRAFT_RECORDED'].format(nom_athlete))
+            with c2:
+                if st.button(t['BTN_SUBMIT_FINAL'], type="primary"):
+                    if len(final_selections) != nb_q: st.error(t['ERR_NOT_N_SELECTED'].format(nb_q))
+                    else:
+                        dict_choix = {athlete: (i+1) for i, athlete in enumerate(final_selections)}
+                        st.session_state.evenements[evenement_actif]["predictions"][nom_athlete] = {"choix": dict_choix, "statut": "final"}
+                        sauvegarder_donnees()
+                        st.success(t['SUCCESS_PREDICT_RECORDED'].format(nom_athlete))
+    else:
+        st.info(t['INFO_INPUT_NAME_FIRST'])
 
 # =========================================================
 # SECTION 2 : VOIR LES PRÉDICTIONS
@@ -318,13 +412,27 @@ elif evenement_actif and choix == t['NAVI_VIEW_PREDICTS']:
     predictions_actuelles = st.session_state.evenements[evenement_actif]["predictions"]
     vrais_resultats = st.session_state.evenements[evenement_actif].get("vrais_resultats")
     
+    # Calcul des choix unanimes (Gris) (#5)
+    unanimous_athletes = set()
+    if ev_type == "qualif" and predictions_actuelles:
+        n_participants = len(predictions_actuelles)
+        athlete_counts = {}
+        for data in predictions_actuelles.values():
+            for a in data["choix"].keys():
+                athlete_counts[a] = athlete_counts.get(a, 0) + 1
+        unanimous_athletes = {a for a, c in athlete_counts.items() if c == n_participants and n_participants > 0}
+    
     if predictions_actuelles:
         affichage_predictions = {}
-        for nom, preds in predictions_actuelles.items():
+        for nom, data in predictions_actuelles.items():
+            # Ajout du tag Brouillon (#8)
+            col_name = f"{nom} (Brouillon)" if data.get("statut") == "brouillon" else nom
             if ev_type == "finale":
-                affichage_predictions[nom] = {rang: athlete for athlete, rang in preds.items()}
+                affichage_predictions[col_name] = {rang: athlete for athlete, rang in data["choix"].items()}
             else:
-                affichage_predictions[nom] = {f"Choix {i+1}": athlete for i, athlete in enumerate(preds.keys())}
+                # Tri alphabétique des choix pour la qualification (#5)
+                choix_list = sorted(data["choix"].keys())
+                affichage_predictions[col_name] = {f"Choix {i+1}": athlete for i, athlete in enumerate(choix_list)}
             
         df = pd.DataFrame(affichage_predictions)
         df.index.name = t['TABLE_PREDICTS_COL_RANK']
@@ -360,8 +468,25 @@ elif evenement_actif and choix == t['NAVI_VIEW_PREDICTS']:
                 return styles
 
             st.dataframe(df.style.apply(coloriser_cellules, axis=0), use_container_width=True)
+            
+            # Légende (#6)
+            if ev_type == "finale": st.caption(t['LEGEND_FINAL_RES_FINALE'])
+            else: st.caption(t['LEGEND_FINAL_RES_QUALIF'])
+            
         else:
-            st.dataframe(df, use_container_width=True)
+            # S'il n'y a pas de résultats mais qu'on a des choix unanimes (Grise) (#5)
+            def coloriser_brouillon(colonne):
+                styles = []
+                for rang_predit, athlete in colonne.items():
+                    if ev_type == "qualif" and athlete in unanimous_athletes:
+                        styles.append('background-color: #d3d3d3; color: black;')
+                    else:
+                        styles.append('')
+                return styles
+                
+            st.dataframe(df.style.apply(coloriser_brouillon, axis=0), use_container_width=True)
+            if ev_type == "qualif" and unanimous_athletes:
+                st.caption(t['LEGEND_UNANIMOUS'])
     else:
         st.info(t['INFO_NO_PREDICTS'])
 
@@ -389,7 +514,10 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
             t['ACTION_CREATE_EVENT']: "CREATE", 
             t['ACTION_RENAME_EVENT']: "RENAME",
             t['ACTION_EDIT_FIN']: "EDIT_FIN", 
+            t['ACTION_CHANGE_NB_Q']: "CHANGE_NB_Q",
+            t['ACTION_REPLACE_ATHLETE']: "REPLACE_ATH",
             t['ACTION_EDIT_PARTICIPANT_NAME']: "EDIT_PART",
+            t['ACTION_DELETE_PRED']: "DELETE_PRED",
             t['ACTION_ENTER_RESULTS']: "ENTER_RESULTS", 
             t['ACTION_MANAGE_ARCHIVES']: "MANAGE_ARCHIVES"
         }
@@ -399,10 +527,8 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
         if action_coach == "CREATE":
             st.subheader(t['SUB_CREATE_EVENT'])
             nouvel_evenement = st.text_input(t['INPUT_NEW_EVENT_NAME'])
-            
             type_ev_label = st.radio(t['EVENT_TYPE_LABEL'], [t['TYPE_FINALE'], t['TYPE_QUALIF']])
             type_ev_code = "finale" if type_ev_label == t['TYPE_FINALE'] else "qualif"
-            
             nb_qualifies = 8
             if type_ev_code == "qualif":
                 nb_qualifies = st.selectbox(t['INPUT_NB_QUALIFIES'], [8, 16, 24])
@@ -456,6 +582,48 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
                     sauvegarder_donnees()
                     st.success(t['SUCCESS_FIN_NAMES_UPDATED'])
 
+        # --- C.b MODIFIER NOMBRE QUALIFIÉS (#1) ---
+        elif evenement_actif and action_coach == "CHANGE_NB_Q":
+            ev_type = st.session_state.evenements[evenement_actif].get("type", "finale")
+            if ev_type == "qualif":
+                st.subheader(t['SUB_CHANGE_NB_Q'])
+                current_nb = st.session_state.evenements[evenement_actif].get("nb_qualifies", 8)
+                new_nb = st.number_input(t['INPUT_NEW_NB_LABEL'], min_value=1, value=current_nb)
+                if st.button(t['BTN_SAVE_NB']):
+                    st.session_state.evenements[evenement_actif]["nb_qualifies"] = new_nb
+                    sauvegarder_donnees()
+                    st.success(t['SUCCESS_NB_CHANGED'])
+            else:
+                st.warning(t['WARN_ONLY_QUALIF'])
+
+        # --- C.c REMPLACER UN ATHLÈTE (#3) ---
+        elif evenement_actif and action_coach == "REPLACE_ATH":
+            st.subheader(t['SUB_REPLACE_ATHLETE'])
+            finalistes_actuels = st.session_state.evenements[evenement_actif]["finalistes"]
+            old_a = st.selectbox(t['OLD_ATHLETE_LABEL'], finalistes_actuels)
+            new_a = st.text_input(t['NEW_ATHLETE_LABEL'])
+            
+            if st.button(t['BTN_REPLACE']):
+                if new_a and new_a not in finalistes_actuels:
+                    ev = st.session_state.evenements[evenement_actif]
+                    ev_type = ev.get("type", "finale")
+                    # Remplacer dans la liste
+                    ev["finalistes"] = [new_a if x == old_a else x for x in ev["finalistes"]]
+                    # Remplacer dans TOUTES les prédictions
+                    for nom, data in ev["predictions"].items():
+                        choix = data["choix"]
+                        if ev_type == "finale":
+                            if old_a in choix: choix[new_a] = choix.pop(old_a)
+                        elif ev_type == "qualif":
+                            if old_a in choix:
+                                val = choix.pop(old_a)
+                                choix[new_a] = val
+                    sauvegarder_donnees()
+                    st.success(t['SUCCESS_REPLACED'])
+                    st.rerun()
+                elif new_a in finalistes_actuels:
+                    st.error(t['ERR_PART_NAME_EXISTS'])
+
         # --- D. MODIFIER LE NOM D'UN PARTICIPANT ---
         elif evenement_actif and action_coach == "EDIT_PART":
             st.subheader(t['SUB_EDIT_PART'])
@@ -470,6 +638,19 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
                         st.success(t['SUCCESS_PART_NAME_UPDATED'])
                         st.rerun()
                     elif nouveau_nom_part in predictions_actuelles and nouveau_nom_part != ancien_nom: st.error(t['ERR_PART_NAME_EXISTS'])
+            else: st.info(t['INFO_NO_PART_YET'])
+            
+        # --- D.b SUPPRIMER UNE PRÉDICTION (#4) ---
+        elif evenement_actif and action_coach == "DELETE_PRED":
+            st.subheader(t['SUB_DELETE_PRED'])
+            predictions_actuelles = list(st.session_state.evenements[evenement_actif]["predictions"].keys())
+            if predictions_actuelles:
+                to_delete = st.selectbox(t['INPUT_SELECT_PART_LABEL'], predictions_actuelles)
+                if st.button(t['BTN_DELETE_PRED']):
+                    del st.session_state.evenements[evenement_actif]["predictions"][to_delete]
+                    sauvegarder_donnees()
+                    st.success(t['SUCCESS_PRED_DELETED'])
+                    st.rerun()
             else: st.info(t['INFO_NO_PART_YET'])
 
         # --- E. ENTRER LES RÉSULTATS ---
@@ -506,8 +687,9 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
                 scores = {}
                 predictions_actuelles = st.session_state.evenements[evenement_actif]["predictions"]
                 
-                for nom, preds in predictions_actuelles.items():
+                for nom, data in predictions_actuelles.items():
                     score = 0
+                    preds = data["choix"]
                     if ev_type == "finale":
                         pred_top_3 = {athl for athl, rang in preds.items() if rang <= 3}
                         for athl, rang in preds.items():
