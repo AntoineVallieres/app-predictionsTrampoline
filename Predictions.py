@@ -457,7 +457,7 @@ elif choix == t['NAVI_GLOBAL_RANKING']:
     st.header(t['NAVI_GLOBAL_RANKING'])
     
     # Extraire les préfixes (6 premiers caractères) des épreuves actives
-    prefixes = sorted(list(set([ev[:6] for ev in st.session_state.evenements.keys() if st.session_state.evenements[ev].get("statut", "actif") == "actif"])))
+    prefixes = sorted(list(set([ev[:8] for ev in st.session_state.evenements.keys() if st.session_state.evenements[ev].get("statut", "actif") == "actif"])))
     
     if prefixes:
         selected_prefix = st.selectbox(t['CHOOSE_COMPETITION_LABEL'], prefixes)
