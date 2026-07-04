@@ -13,10 +13,12 @@ TEXTS = {
         'NAVI_LABEL': "Navigation",
         'NAVI_PREDICT': "Faire une prédiction",
         'NAVI_VIEW_PREDICTS': "Voir les prédictions",
+        'NAVI_GLOBAL_RANKING': "🏆 Classement Général",
         'NAVI_COACH': "Zone Admin",
         'WELCOME_MSG_TITLE': "👋 Bienvenue !",
         'WELCOME_MSG_COACH_ACTION': "Veuillez aller dans la 'Zone Admin' pour créer votre premier événement.",
         'CHOOSE_EVENT_LABEL': "Choisir l'épreuve :",
+        'CHOOSE_COMPETITION_LABEL': "Sélectionnez la compétition (6 premiers caractères) :",
         'NAVI_SUB_GO': "Aller à :",
         'SUB_PREDICT_TITLE': "Fais tes choix",
         'INPUT_NAME_LABEL': "Quel est ton nom?",
@@ -85,13 +87,14 @@ TEXTS = {
         'ERR_PART_NAME_EXISTS': "Ce nom existe déjà.",
         'INFO_NO_PART_YET': "Aucun participant pour cette épreuve.",
         'SUB_ENTER_RESULTS': "🏆 Résultats officiels pour l'épreuve",
-        'INPUT_TRUE_POS': "Vraie position {0}",
+        'INFO_RESULTS_ORDER': "Cochez les athlètes dans leur ordre d'arrivée (du 1er au dernier). **L'ordre de vos clics détermine le classement !**",
         'BTN_CALC_RESULTS': "CALCULER ET APPLIQUER LES COULEURS",
-        'ERR_INCOMPLETE_RESULTS': "Remplis les {0} positions avec des athlètes différents.",
+        'ERR_INCOMPLETE_RESULTS': "Remplis les {0} positions.",
         'SUCCESS_RESULTS_SAVED': "Résultats sauvegardés !",
-        'CALC_LEADERBOARD_TITLE': "Classement final des experts",
+        'CALC_LEADERBOARD_TITLE': "Classement de l'épreuve",
         'CALC_COL_PART': "Participant",
-        'CALC_COL_POINTS': "Points Total",
+        'CALC_COL_POINTS': "Points de l'épreuve",
+        'CALC_COL_WINS': "Victoires (1re position)",
         'BTN_CREATE_NEXT_ROUND': "🔗 Créer la RONDE SUIVANTE avec ces {0} athlètes",
         'SUCCESS_LINKED_FINAL': "La ronde suivante a été créée avec succès !",
         'SUB_MANAGE_ARCHIVES': "🗑️ Nettoyage des événements",
@@ -112,10 +115,12 @@ TEXTS = {
         'NAVI_LABEL': "Navigation",
         'NAVI_PREDICT': "Make a prediction",
         'NAVI_VIEW_PREDICTS': "View predictions",
+        'NAVI_GLOBAL_RANKING': "🏆 Global Leaderboard",
         'NAVI_COACH': "Admin Zone",
         'WELCOME_MSG_TITLE': "👋 Welcome!",
         'WELCOME_MSG_COACH_ACTION': "Please go to the 'Admin Zone' to create your first event.",
         'CHOOSE_EVENT_LABEL': "Choose the event:",
+        'CHOOSE_COMPETITION_LABEL': "Select competition (first 6 chars):",
         'NAVI_SUB_GO': "Go to:",
         'SUB_PREDICT_TITLE': "Make your choices",
         'INPUT_NAME_LABEL': "What is your name?",
@@ -184,13 +189,14 @@ TEXTS = {
         'ERR_PART_NAME_EXISTS': "Name already exists.",
         'INFO_NO_PART_YET': "No participant yet.",
         'SUB_ENTER_RESULTS': "🏆 Official results for",
-        'INPUT_TRUE_POS': "True position {0}",
+        'INFO_RESULTS_ORDER': "Check the athletes in their exact finishing order (from 1st to last). **The order of your clicks determines the ranking!**",
         'BTN_CALC_RESULTS': "CALCULATE AND APPLY COLORS",
-        'ERR_INCOMPLETE_RESULTS': "Fill all {0} positions with different athletes.",
+        'ERR_INCOMPLETE_RESULTS': "Fill all {0} positions.",
         'SUCCESS_RESULTS_SAVED': "Results saved!",
-        'CALC_LEADERBOARD_TITLE': "Final Leaderboard",
+        'CALC_LEADERBOARD_TITLE': "Event Leaderboard",
         'CALC_COL_PART': "Participant",
-        'CALC_COL_POINTS': "Total Points",
+        'CALC_COL_POINTS': "Event Points",
+        'CALC_COL_WINS': "Wins (1st Place finishes)",
         'BTN_CREATE_NEXT_ROUND': "🔗 Create NEXT ROUND with these {0} athletes",
         'SUCCESS_LINKED_FINAL': "Next round successfully created!",
         'SUB_MANAGE_ARCHIVES': "🗑️ Event Management",
@@ -272,8 +278,12 @@ if not liste_evenements_actifs:
     evenement_actif = None
     choix = t['NAVI_COACH']
 else:
-    evenement_actif = st.sidebar.selectbox(t['CHOOSE_EVENT_LABEL'], liste_evenements_actifs)
-    choix = st.sidebar.radio(t['NAVI_SUB_GO'], [t['NAVI_PREDICT'], t['NAVI_VIEW_PREDICTS'], t['NAVI_COACH']])
+    # On ajoute le classement global au menu
+    choix = st.sidebar.radio(t['NAVI_SUB_GO'], [t['NAVI_PREDICT'], t['NAVI_VIEW_PREDICTS'], t['NAVI_GLOBAL_RANKING'], t['NAVI_COACH']])
+    if choix != t['NAVI_GLOBAL_RANKING']:
+        evenement_actif = st.sidebar.selectbox(t['CHOOSE_EVENT_LABEL'], liste_evenements_actifs)
+    else:
+        evenement_actif = None
 
 st.write("---")
 
@@ -304,9 +314,7 @@ if evenement_actif and choix == t['NAVI_PREDICT']:
     is_valid = False
     nb_q = 8
 
-    # LOGIQUE FINALE
     if ev_type == "finale":
-        # Modification de l'empilement pour ordre vertical correct
         for i in range(0, len(finalistes_actuels), 2):
             cols = st.columns(2)
             with cols[0]:
@@ -320,7 +328,6 @@ if evenement_actif and choix == t['NAVI_PREDICT']:
         valeurs = list(dict_choix.values())
         is_valid = (None not in valeurs) and (len(set(valeurs)) == 8)
 
-    # LOGIQUE QUALIFICATION
     elif ev_type == "qualif":
         nb_q = st.session_state.evenements[evenement_actif].get("nb_qualifies", 8)
         st.write(f"**{t['MULTISELECT_QUALIF_LABEL'].format(nb_q)}**")
@@ -328,7 +335,6 @@ if evenement_actif and choix == t['NAVI_PREDICT']:
         checked_count = sum([1 for ath in finalistes_actuels if st.session_state.get(f"chk_{evenement_actif}_{ath}", False)])
         
         choix_utilisateur = []
-        # Modification de l'empilement pour ordre vertical correct
         for i in range(0, len(finalistes_actuels), 3):
             cols = st.columns(3)
             for j in range(3):
@@ -445,7 +451,67 @@ elif evenement_actif and choix == t['NAVI_VIEW_PREDICTS']:
         st.info(t['INFO_NO_PREDICTS'])
 
 # =========================================================
-# SECTION 3 : ZONE ADMIN
+# SECTION 3 : CLASSEMENT GÉNÉRAL (COMPÉTITION)
+# =========================================================
+elif choix == t['NAVI_GLOBAL_RANKING']:
+    st.header(t['NAVI_GLOBAL_RANKING'])
+    
+    # Extraire les préfixes (6 premiers caractères) des épreuves actives
+    prefixes = sorted(list(set([ev[:6] for ev in st.session_state.evenements.keys() if st.session_state.evenements[ev].get("statut", "actif") == "actif"])))
+    
+    if prefixes:
+        selected_prefix = st.selectbox(t['CHOOSE_COMPETITION_LABEL'], prefixes)
+        
+        global_scores = {}
+        events_counted = 0
+        
+        for ev_nom, ev_data in st.session_state.evenements.items():
+            if ev_data.get("statut", "actif") == "actif" and ev_nom.startswith(selected_prefix) and ev_data.get("vrais_resultats"):
+                events_counted += 1
+                ev_type = ev_data.get("type", "finale")
+                vrais_res = ev_data["vrais_resultats"]
+                vrais_res_propres = {int(k): v for k, v in vrais_res.items()}
+                vrais_resultats_athlete = {athlete: int(rang) for rang, athlete in vrais_res_propres.items()}
+                vrai_top_3 = {vrais_res_propres.get(i) for i in [1, 2, 3] if vrais_res_propres.get(i)}
+                vrai_premier = vrais_res_propres.get(1)
+                
+                scores_ev = {}
+                valid_preds = {nom: data["choix"] for nom, data in ev_data["predictions"].items() if not data.get("brouillon", False)}
+                
+                for nom, choix_athlete in valid_preds.items():
+                    score = 0
+                    if ev_type == "finale":
+                        pred_top_3 = {athl for athl, rang in choix_athlete.items() if rang <= 3}
+                        for athl, rang in choix_athlete.items():
+                            if vrais_resultats_athlete.get(athl) == rang: score += 1
+                        score += len(vrai_top_3.intersection(pred_top_3))
+                        if choix_athlete.get(vrai_premier) == 1: score += 1
+                    elif ev_type == "qualif":
+                        for athl in choix_athlete.keys():
+                            if athl in vrais_resultats_athlete: score += 1
+                    scores_ev[nom] = score
+                
+                if scores_ev:
+                    max_score = max(scores_ev.values())
+                    for nom, score in scores_ev.items():
+                        if score == max_score:
+                            global_scores[nom] = global_scores.get(nom, 0) + 1
+                        else:
+                            global_scores[nom] = global_scores.get(nom, 0)
+                            
+        if events_counted > 0:
+            st.write(f"*(Épreuves comptabilisées pour {selected_prefix} : {events_counted})*")
+            df_global = pd.DataFrame(list(global_scores.items()), columns=[t['CALC_COL_PART'], t['CALC_COL_WINS']])
+            df_global = df_global.sort_values(by=t['CALC_COL_WINS'], ascending=False).reset_index(drop=True)
+            df_global.index += 1
+            st.dataframe(df_global, use_container_width=True)
+        else:
+            st.info("Aucun résultat officiel n'a été entré pour les épreuves de cette compétition.")
+    else:
+        st.info("Aucune compétition n'est disponible pour le moment.")
+
+# =========================================================
+# SECTION 4 : ZONE ADMIN
 # =========================================================
 elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
     st.header(t['SUB_COACH_TITLE'])
@@ -571,7 +637,6 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
                     elif nouveau_nom_part in predictions_actuelles and nouveau_nom_part != ancien_nom: st.error(t['ERR_PART_NAME_EXISTS'])
             else: st.info(t['INFO_NO_PART_YET'])
 
-        # --- F. MODIFIER UNE PRÉDICTION PAR L'ADMIN ---
         elif evenement_actif and action_coach == "MODIF_PREDICT":
             st.subheader("Modifier manuellement les choix d'un participant")
             predictions_brutes = st.session_state.evenements[evenement_actif]["predictions"]
@@ -658,25 +723,57 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
             st.subheader(f"{t['SUB_ENTER_RESULTS']} : {evenement_actif}")
             ev_type = st.session_state.evenements[evenement_actif].get("type", "finale")
             nb_q = st.session_state.evenements[evenement_actif].get("nb_qualifies", 8)
-            vrais_resultats_rang = {}
             finalistes_actuels = sorted(st.session_state.evenements[evenement_actif]["finalistes"])
             
             limite_resultats = 8 if ev_type == "finale" else nb_q
+            vrais_resultats_rang = {}
             
-            # Modification de l'empilement pour ordre vertical correct
-            for i in range(1, limite_resultats + 1, 2):
-                cols = st.columns(2)
-                with cols[0]:
-                    gagnant1 = st.selectbox(t['INPUT_TRUE_POS'].format(i), options=[None] + finalistes_actuels, key=f"vrai_{i}")
-                    if gagnant1: vrais_resultats_rang[i] = gagnant1
-                if i + 1 <= limite_resultats:
-                    with cols[1]:
-                        gagnant2 = st.selectbox(t['INPUT_TRUE_POS'].format(i+1), options=[None] + finalistes_actuels, key=f"vrai_{i+1}")
-                        if gagnant2: vrais_resultats_rang[i+1] = gagnant2
+            st.markdown(t['INFO_RESULTS_ORDER'])
+            
+            # --- SYSTÈME DE CASES À COCHER PAR ORDRE ---
+            state_key = f"ordre_res_{evenement_actif}"
+            
+            # Initialisation de la mémoire pour l'ordre
+            if state_key not in st.session_state:
+                st.session_state[state_key] = []
+                # Si des résultats existent déjà, on les charge pour afficher l'ordre
+                vrais_res = st.session_state.evenements[evenement_actif].get("vrais_resultats")
+                if vrais_res:
+                    vrais_res_propres = {int(k): v for k, v in vrais_res.items()}
+                    ordered_athls = [vrais_res_propres[k] for k in sorted(vrais_res_propres.keys())]
+                    st.session_state[state_key] = ordered_athls
+                    for ath in ordered_athls:
+                        st.session_state[f"chk_res_{evenement_actif}_{ath}"] = True
+            
+            # Fonction qui gère l'ordre des clics
+            def update_res_order(athl, chk_key, s_key):
+                if st.session_state[chk_key] and athl not in st.session_state[s_key]:
+                    st.session_state[s_key].append(athl)
+                elif not st.session_state[chk_key] and athl in st.session_state[s_key]:
+                    st.session_state[s_key].remove(athl)
 
+            # Affichage de la grille de 3 colonnes (comme les prédictions)
+            for i in range(0, len(finalistes_actuels), 3):
+                cols = st.columns(3)
+                for j in range(3):
+                    if i + j < len(finalistes_actuels):
+                        ath = finalistes_actuels[i + j]
+                        chk_key = f"chk_res_{evenement_actif}_{ath}"
+                        with cols[j]:
+                            disabled = len(st.session_state[state_key]) >= limite_resultats and ath not in st.session_state[state_key]
+                            st.checkbox(ath, key=chk_key, on_change=update_res_order, args=(ath, chk_key, state_key), disabled=disabled)
+            
+            st.write(f"**Sélectionnés ({len(st.session_state[state_key])} / {limite_resultats}) :**")
+            if st.session_state[state_key]:
+                st.caption(" ➔ ".join(st.session_state[state_key]))
+            
             if st.button(t['BTN_CALC_RESULTS'], type="primary"):
-                if len(set(vrais_resultats_rang.values())) != limite_resultats: st.error(t['ERR_INCOMPLETE_RESULTS'].format(limite_resultats))
+                if len(st.session_state[state_key]) != limite_resultats: 
+                    st.error(t['ERR_INCOMPLETE_RESULTS'].format(limite_resultats))
                 else:
+                    for idx, ath in enumerate(st.session_state[state_key]):
+                        vrais_resultats_rang[idx + 1] = ath
+                        
                     st.session_state.evenements[evenement_actif]["vrais_resultats"] = vrais_resultats_rang
                     sauvegarder_donnees()
                     st.success(t['SUCCESS_RESULTS_SAVED'])
