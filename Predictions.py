@@ -222,6 +222,7 @@ st.markdown(f"<script>document.title = '{t['APP_TITLE']}'</script>", unsafe_allo
 
 
 # --- CONNEXION À GOOGLE SHEETS ---
+@st.cache_resource(ttl=600)
 def get_sheet():
     creds_json = st.secrets["google_json"]
     creds_dict = json.loads(creds_json)
@@ -239,6 +240,7 @@ def charger_donnees():
         valeur = sheet.acell('A1').value
         if valeur:
             donnees = json.loads(valeur)
+            # Patch de rétrocompatibilité
             for ev_nom, ev_data in donnees.items():
                 if "statut" not in ev_data: ev_data["statut"] = "actif"
                 if "vrais_resultats" not in ev_data: ev_data["vrais_resultats"] = None
@@ -250,9 +252,12 @@ def charger_donnees():
                         if not isinstance(p_val, dict) or "choix" not in p_val:
                             ev_data["predictions"][p_nom] = {"choix": p_val, "brouillon": False}
             return donnees
+        return {}
     except Exception as e:
-        pass
-    return {}
+        # ARRÊT D'URGENCE POUR PROTÉGER LES DONNÉES
+        st.error(f"⚠️ Erreur de connexion à la base de données Google : {e}")
+        st.error("Par sécurité, l'application est bloquée pour éviter d'effacer les données existantes. Veuillez rafraîchir la page dans quelques instants.")
+        st.stop() 
 
 def sauvegarder_donnees():
     try:
@@ -260,7 +265,7 @@ def sauvegarder_donnees():
         donnees_json = json.dumps(st.session_state.evenements, ensure_ascii=False)
         sheet.update_acell('A1', donnees_json)
     except Exception as e:
-        st.error(f"Erreur de sauvegarde Cloud : {e}")
+        st.error(f"⚠️ Erreur de sauvegarde Cloud : {e}")
 
 if 'evenements' not in st.session_state:
     st.session_state.evenements = charger_donnees()
