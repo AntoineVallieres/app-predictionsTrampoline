@@ -1,9 +1,9 @@
 import streamlit as st
 import pandas as pd
 import json
-import gspread
+from google.cloud import firestore
+from google.oauth2 import service_account
 import math
-from google.oauth2.service_account import Credentials
 
 # --- ÉTAPE A : LE DICTIONNAIRE DE TRADUCTIONS ---
 TEXTS = {
@@ -13,12 +13,12 @@ TEXTS = {
         'NAVI_LABEL': "Navigation",
         'NAVI_PREDICT': "Faire une prédiction",
         'NAVI_VIEW_PREDICTS': "Voir les prédictions",
-        'NAVI_GLOBAL_RANKING': "Classement Général",
+        'NAVI_GLOBAL_RANKING': "🏆 Classement Général",
         'NAVI_COACH': "Zone Admin",
         'WELCOME_MSG_TITLE': "👋 Bienvenue !",
         'WELCOME_MSG_COACH_ACTION': "Veuillez aller dans la 'Zone Admin' pour créer votre premier événement.",
         'CHOOSE_EVENT_LABEL': "Choisir l'épreuve :",
-        'CHOOSE_COMPETITION_LABEL': "Sélectionnez la compétition :",
+        'CHOOSE_COMPETITION_LABEL': "Sélectionnez la compétition (6 premiers caractères) :",
         'NAVI_SUB_GO': "Aller à :",
         'SUB_PREDICT_TITLE': "Fais tes choix",
         'INPUT_NAME_LABEL': "Quel est ton nom?",
@@ -115,12 +115,12 @@ TEXTS = {
         'NAVI_LABEL': "Navigation",
         'NAVI_PREDICT': "Make a prediction",
         'NAVI_VIEW_PREDICTS': "View predictions",
-        'NAVI_GLOBAL_RANKING': "Global Leaderboard",
+        'NAVI_GLOBAL_RANKING': "🏆 Global Leaderboard",
         'NAVI_COACH': "Admin Zone",
         'WELCOME_MSG_TITLE': "👋 Welcome!",
         'WELCOME_MSG_COACH_ACTION': "Please go to the 'Admin Zone' to create your first event.",
         'CHOOSE_EVENT_LABEL': "Choose the event:",
-        'CHOOSE_COMPETITION_LABEL': "Select competition:",
+        'CHOOSE_COMPETITION_LABEL': "Select competition (first 6 chars):",
         'NAVI_SUB_GO': "Go to:",
         'SUB_PREDICT_TITLE': "Make your choices",
         'INPUT_NAME_LABEL': "What is your name?",
@@ -221,49 +221,43 @@ t = TEXTS[selected_lang]
 st.markdown(f"<script>document.title = '{t['APP_TITLE']}'</script>", unsafe_allow_html=True)
 
 
-# --- CONNEXION À GOOGLE SHEETS ---
+# --- CONNEXION À GOOGLE FIREBASE FIRESTORE ---
 @st.cache_resource(ttl=600)
-def get_sheet():
+def get_db():
     creds_json = st.secrets["google_json"]
     creds_dict = json.loads(creds_json)
-    credentials = Credentials.from_service_account_info(
-        creds_dict,
-        scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-    )
-    gc = gspread.authorize(credentials)
-    sh = gc.open("BaseDeDonnees_Trampoline")
-    return sh.sheet1
+    creds = service_account.Credentials.from_service_account_info(creds_dict)
+    return firestore.Client(credentials=creds, project=creds_dict["project_id"])
 
 def charger_donnees():
     try:
-        sheet = get_sheet()
-        valeur = sheet.acell('A1').value
-        if valeur:
-            donnees = json.loads(valeur)
-            # Patch de rétrocompatibilité
-            for ev_nom, ev_data in donnees.items():
-                if "statut" not in ev_data: ev_data["statut"] = "actif"
-                if "vrais_resultats" not in ev_data: ev_data["vrais_resultats"] = None
-                if "type" not in ev_data: ev_data["type"] = "finale"
-                if ev_data["type"] == "demi-finale": ev_data["type"] = "qualif"
-                if "nb_qualifies" not in ev_data: ev_data["nb_qualifies"] = 8
-                if "predictions" in ev_data:
-                    for p_nom, p_val in ev_data["predictions"].items():
-                        if not isinstance(p_val, dict) or "choix" not in p_val:
-                            ev_data["predictions"][p_nom] = {"choix": p_val, "brouillon": False}
-            return donnees
-        return {}
+        db = get_db()
+        docs = db.collection("competitions").stream()
+        donnees = {}
+        for doc in docs:
+            ev_data = doc.to_dict()
+            # Rétrocompatibilité et sécurité structurelle
+            if "statut" not in ev_data: ev_data["statut"] = "actif"
+            if "vrais_resultats" not in ev_data: ev_data["vrais_resultats"] = None
+            if "type" not in ev_data: ev_data["type"] = "finale"
+            if ev_data["type"] == "demi-finale": ev_data["type"] = "qualif"
+            if "nb_qualifies" not in ev_data: ev_data["nb_qualifies"] = 8
+            if "predictions" in ev_data:
+                for p_nom, p_val in ev_data["predictions"].items():
+                    if not isinstance(p_val, dict) or "choix" not in p_val:
+                        ev_data["predictions"][p_nom] = {"choix": p_val, "brouillon": False}
+            donnees[doc.id] = ev_data
+        return donnees
     except Exception as e:
-        # ARRÊT D'URGENCE POUR PROTÉGER LES DONNÉES
-        st.error(f"⚠️ Erreur de connexion à la base de données Google : {e}")
-        st.error("Par sécurité, l'application est bloquée pour éviter d'effacer les données existantes. Veuillez rafraîchir la page dans quelques instants.")
-        st.stop() 
+        st.error(f"⚠️ Erreur de connexion Firebase : {e}")
+        st.stop()
 
 def sauvegarder_donnees():
     try:
-        sheet = get_sheet()
-        donnees_json = json.dumps(st.session_state.evenements, ensure_ascii=False)
-        sheet.update_acell('A1', donnees_json)
+        db = get_db()
+        for ev_nom, ev_data in st.session_state.evenements.items():
+            # Chaque événement possède maintenant son propre document indépendant
+            db.collection("competitions").document(ev_nom).set(ev_data)
     except Exception as e:
         st.error(f"⚠️ Erreur de sauvegarde Cloud : {e}")
 
@@ -283,7 +277,6 @@ if not liste_evenements_actifs:
     evenement_actif = None
     choix = t['NAVI_COACH']
 else:
-    # On ajoute le classement global au menu
     choix = st.sidebar.radio(t['NAVI_SUB_GO'], [t['NAVI_PREDICT'], t['NAVI_VIEW_PREDICTS'], t['NAVI_GLOBAL_RANKING'], t['NAVI_COACH']])
     if choix != t['NAVI_GLOBAL_RANKING']:
         evenement_actif = st.sidebar.selectbox(t['CHOOSE_EVENT_LABEL'], liste_evenements_actifs)
@@ -461,8 +454,7 @@ elif evenement_actif and choix == t['NAVI_VIEW_PREDICTS']:
 elif choix == t['NAVI_GLOBAL_RANKING']:
     st.header(t['NAVI_GLOBAL_RANKING'])
     
-    # Extraire les préfixes (6 premiers caractères) des épreuves actives
-    prefixes = sorted(list(set([ev[:8] for ev in st.session_state.evenements.keys() if st.session_state.evenements[ev].get("statut", "actif") == "actif"])))
+    prefixes = sorted(list(set([ev[:6] for ev in st.session_state.evenements.keys() if st.session_state.evenements[ev].get("statut", "actif") == "actif"])))
     
     if prefixes:
         selected_prefix = st.selectbox(t['CHOOSE_COMPETITION_LABEL'], prefixes)
@@ -579,6 +571,10 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
                 if nouveau_nom_ev != evenement_actif and nouveau_nom_ev not in st.session_state.evenements:
                     st.session_state.evenements[nouveau_nom_ev] = st.session_state.evenements.pop(evenement_actif)
                     sauvegarder_donnees()
+                    # Suppression de l'ancienne version dans Firebase
+                    try:
+                        get_db().collection("competitions").document(evenement_actif).delete()
+                    except: pass
                     st.success(t['SUCCESS_RENAMED'])
                     st.rerun()
                 elif nouveau_nom_ev in st.session_state.evenements and nouveau_nom_ev != evenement_actif: st.error(t['ERR_EVENT_EXISTS'])
@@ -735,13 +731,9 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
             
             st.markdown(t['INFO_RESULTS_ORDER'])
             
-            # --- SYSTÈME DE CASES À COCHER PAR ORDRE ---
             state_key = f"ordre_res_{evenement_actif}"
-            
-            # Initialisation de la mémoire pour l'ordre
             if state_key not in st.session_state:
                 st.session_state[state_key] = []
-                # Si des résultats existent déjà, on les charge pour afficher l'ordre
                 vrais_res = st.session_state.evenements[evenement_actif].get("vrais_resultats")
                 if vrais_res:
                     vrais_res_propres = {int(k): v for k, v in vrais_res.items()}
@@ -750,14 +742,12 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
                     for ath in ordered_athls:
                         st.session_state[f"chk_res_{evenement_actif}_{ath}"] = True
             
-            # Fonction qui gère l'ordre des clics
             def update_res_order(athl, chk_key, s_key):
                 if st.session_state[chk_key] and athl not in st.session_state[s_key]:
                     st.session_state[s_key].append(athl)
                 elif not st.session_state[chk_key] and athl in st.session_state[s_key]:
                     st.session_state[s_key].remove(athl)
 
-            # Affichage de la grille de 3 colonnes (comme les prédictions)
             for i in range(0, len(finalistes_actuels), 3):
                 cols = st.columns(3)
                 for j in range(3):
@@ -857,5 +847,8 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
                     if st.button(t['COL2_BTN_DELETE_FOREVER']):
                         del st.session_state.evenements[ev_a_gerer]
                         sauvegarder_donnees()
+                        try:
+                            get_db().collection("competitions").document(ev_a_gerer).delete()
+                        except: pass
                         st.error(t['SUCCESS_DELETED']); st.rerun()
             else: st.info(t['INFO_NO_EVENTS_TO_MANAGE'])
