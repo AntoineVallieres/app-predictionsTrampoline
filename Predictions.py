@@ -236,7 +236,6 @@ def charger_donnees():
         donnees = {}
         for doc in docs:
             ev_data = doc.to_dict()
-            # Rétrocompatibilité et sécurité structurelle
             if "statut" not in ev_data: ev_data["statut"] = "actif"
             if "vrais_resultats" not in ev_data: ev_data["vrais_resultats"] = None
             if "type" not in ev_data: ev_data["type"] = "finale"
@@ -256,8 +255,21 @@ def sauvegarder_donnees():
     try:
         db = get_db()
         for ev_nom, ev_data in st.session_state.evenements.items():
-            # Chaque événement possède maintenant son propre document indépendant
-            db.collection("competitions").document(ev_nom).set(ev_data)
+            # Sécurité 1 : Ignorer les événements avec un nom vide ou invalide
+            if not ev_nom or str(ev_nom).strip() == "":
+                continue
+            
+            # Sécurité 2 : Remplacer les barres obliques par des tirets
+            nom_propre = str(ev_nom).replace("/", "-")
+            
+            # Sécurité 3 : Convertir les nombres en texte (clés de dictionnaire Firebase)
+            if ev_data.get("vrais_resultats"):
+                res_propres = {}
+                for k, v in ev_data["vrais_resultats"].items():
+                    res_propres[str(k)] = v
+                ev_data["vrais_resultats"] = res_propres
+                
+            db.collection("competitions").document(nom_propre).set(ev_data)
     except Exception as e:
         st.error(f"⚠️ Erreur de sauvegarde Cloud : {e}")
 
@@ -552,6 +564,7 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
                 nb_qualifies = st.selectbox(t['INPUT_NB_QUALIFIES'], [8, 16, 24])
             
             if st.button(t['BTN_CREATE_EVENT']):
+                nouvel_evenement = nouvel_evenement.replace("/", "-").strip()
                 if nouvel_evenement and nouvel_evenement not in st.session_state.evenements:
                     st.session_state.evenements[nouvel_evenement] = {
                         "type": type_ev_code,
@@ -568,10 +581,10 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
             st.subheader(f"{t['SUB_RENAME_EVENT']} : {evenement_actif}")
             nouveau_nom_ev = st.text_input(t['INPUT_NEW_NAME_EV'], value=evenement_actif)
             if st.button(t['BTN_CONFIRM_RENAME']):
-                if nouveau_nom_ev != evenement_actif and nouveau_nom_ev not in st.session_state.evenements:
+                nouveau_nom_ev = nouveau_nom_ev.replace("/", "-").strip()
+                if nouveau_nom_ev and nouveau_nom_ev != evenement_actif and nouveau_nom_ev not in st.session_state.evenements:
                     st.session_state.evenements[nouveau_nom_ev] = st.session_state.evenements.pop(evenement_actif)
                     sauvegarder_donnees()
-                    # Suppression de l'ancienne version dans Firebase
                     try:
                         get_db().collection("competitions").document(evenement_actif).delete()
                     except: pass
@@ -748,30 +761,49 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
                 elif not st.session_state[chk_key] and athl in st.session_state[s_key]:
                     st.session_state[s_key].remove(athl)
 
-            for i in range(0, len(finalistes_actuels), 3):
-                cols = st.columns(3)
-                for j in range(3):
-                    if i + j < len(finalistes_actuels):
-                        ath = finalistes_actuels[i + j]
-                        chk_key = f"chk_res_{evenement_actif}_{ath}"
-                        with cols[j]:
-                            disabled = len(st.session_state[state_key]) >= limite_resultats and ath not in st.session_state[state_key]
-                            st.checkbox(ath, key=chk_key, on_change=update_res_order, args=(ath, chk_key, state_key), disabled=disabled)
+            if ev_type == "finale":
+                for i in range(1, limite_resultats + 1, 2):
+                    cols = st.columns(2)
+                    with cols[0]:
+                        gagnant1 = st.selectbox(t['INPUT_TRUE_POS'].format(i), options=[None] + finalistes_actuels, key=f"vrai_{i}")
+                        if gagnant1: vrais_resultats_rang[str(i)] = gagnant1
+                    if i + 1 <= limite_resultats:
+                        with cols[1]:
+                            gagnant2 = st.selectbox(t['INPUT_TRUE_POS'].format(i+1), options=[None] + finalistes_actuels, key=f"vrai_{i+1}")
+                            if gagnant2: vrais_resultats_rang[str(i+1)] = gagnant2
             
-            st.write(f"**Sélectionnés ({len(st.session_state[state_key])} / {limite_resultats}) :**")
-            if st.session_state[state_key]:
-                st.caption(" ➔ ".join(st.session_state[state_key]))
+            elif ev_type == "qualif":
+                for i in range(0, len(finalistes_actuels), 3):
+                    cols = st.columns(3)
+                    for j in range(3):
+                        if i + j < len(finalistes_actuels):
+                            ath = finalistes_actuels[i + j]
+                            chk_key = f"chk_res_{evenement_actif}_{ath}"
+                            with cols[j]:
+                                disabled = len(st.session_state[state_key]) >= limite_resultats and ath not in st.session_state[state_key]
+                                st.checkbox(ath, key=chk_key, on_change=update_res_order, args=(ath, chk_key, state_key), disabled=disabled)
+                
+                st.write(f"**Sélectionnés ({len(st.session_state[state_key])} / {limite_resultats}) :**")
+                if st.session_state[state_key]:
+                    st.caption(" ➔ ".join(st.session_state[state_key]))
             
             if st.button(t['BTN_CALC_RESULTS'], type="primary"):
-                if len(st.session_state[state_key]) != limite_resultats: 
-                    st.error(t['ERR_INCOMPLETE_RESULTS'].format(limite_resultats))
-                else:
-                    for idx, ath in enumerate(st.session_state[state_key]):
-                        vrais_resultats_rang[idx + 1] = ath
-                        
-                    st.session_state.evenements[evenement_actif]["vrais_resultats"] = vrais_resultats_rang
-                    sauvegarder_donnees()
-                    st.success(t['SUCCESS_RESULTS_SAVED'])
+                if ev_type == "qualif":
+                    if len(st.session_state[state_key]) != limite_resultats: 
+                        st.error(t['ERR_INCOMPLETE_RESULTS'].format(limite_resultats))
+                    else:
+                        for idx, ath in enumerate(st.session_state[state_key]):
+                            vrais_resultats_rang[str(idx + 1)] = ath
+                        st.session_state.evenements[evenement_actif]["vrais_resultats"] = vrais_resultats_rang
+                        sauvegarder_donnees()
+                        st.success(t['SUCCESS_RESULTS_SAVED'])
+                elif ev_type == "finale":
+                    if len(set(vrais_resultats_rang.values())) != limite_resultats: 
+                        st.error(t['ERR_INCOMPLETE_RESULTS'].format(limite_resultats))
+                    else:
+                        st.session_state.evenements[evenement_actif]["vrais_resultats"] = vrais_resultats_rang
+                        sauvegarder_donnees()
+                        st.success(t['SUCCESS_RESULTS_SAVED'])
             
             if st.session_state.evenements[evenement_actif].get("vrais_resultats"):
                 vrais_res = st.session_state.evenements[evenement_actif]["vrais_resultats"]
@@ -810,10 +842,11 @@ elif choix == t['NAVI_COACH'] or choix == 'Zone Admin' or choix == "Admin Zone":
                     st.write("---")
                     nom_nouvelle_ronde = f"{evenement_actif} - RONDE SUIVANTE"
                     if st.button(t['BTN_CREATE_NEXT_ROUND'].format(nb_q)):
-                        if nom_nouvelle_ronde not in st.session_state.evenements:
+                        nom_nouvelle_ronde_propre = nom_nouvelle_ronde.replace("/", "-")
+                        if nom_nouvelle_ronde_propre not in st.session_state.evenements:
                             nouveau_type = "finale" if nb_q == 8 else "qualif"
                             nouv_nb_q = 8
-                            st.session_state.evenements[nom_nouvelle_ronde] = {
+                            st.session_state.evenements[nom_nouvelle_ronde_propre] = {
                                 "type": nouveau_type,
                                 "nb_qualifies": nouv_nb_q,
                                 "finalistes": list(vrais_res_propres.values()),
